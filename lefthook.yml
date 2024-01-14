@@ -1,0 +1,12 @@
+pre-commit:
+  commands:
+    format:
+      glob: "*.{ts,tsx,json,md,yml,yml}"
+      run: |
+        npx prettier -w {staged_files}
+        git add {staged_files}
+    lint:
+      glob: "*.{ts,tsx,json}"
+      run: |
+        npx biome lint --apply {staged_files}
+        git add {staged_files}
