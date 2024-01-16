@@ -1,6 +1,6 @@
 # webext-storage
 
-`@ookkoouu/webext-storage` is a utility library of Web-Extension Storage API for realistic use cases inspired by [@plasmohq/storage](https://github.com/PlasmoHQ/storage).
+`@okou/webext-storage` is a utility library of Web-Extension Storage API for realistic use cases inspired by [@plasmohq/storage](https://github.com/PlasmoHQ/storage).
 
 ## Features
 
@@ -14,7 +14,7 @@
 ### Normal
 
 ```ts
-import { Storage } from "@ookkoouu/webext-storage";
+import { Storage } from "@okou/webext-storage";
 
 // Default value required
 const storage = new Storage("normal", 123, { area: "local" });
@@ -54,7 +54,7 @@ storage.watch({
 ### Hooks
 
 ```jsx
-import { useKVStorage } from "@ookkoouu/webext-storage/react";
+import { useKVStorage } from "@okou/webext-storage/react";
 
 const kv = {
   useFor: "config",
