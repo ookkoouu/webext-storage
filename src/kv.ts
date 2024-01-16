@@ -1,35 +1,30 @@
+import { diffObject } from "./lib";
 import { Storage, type StorageOptions } from "./storage";
-import type {
-  JSONObject,
-  StorageChange,
-  StorageChangedCallback,
-  Watcher,
-} from "./types";
+import type { KVEntries, StorageChange, Watcher } from "./types";
 
-function diffObject(
-  newObject: Record<string, unknown>,
-  oldObject: Record<string, unknown>,
-) {
-  return Object.fromEntries(
-    Object.entries(newObject).filter(([k, v]) => v !== oldObject[k]),
-  );
-}
+export type KVStorageOptions = StorageOptions;
 
-export type KVStorageOptions = Record<string, unknown> & StorageOptions;
-
-export class KVStorage<T extends JSONObject> {
+export class KVStorage<T extends KVEntries> {
   protected storage: Storage<T>;
   readonly defaultValue: T;
   protected watchers = new Set<Watcher<T>>();
+  onChanged: Pick<
+    chrome.events.Event<(change: { newValue?: T; oldValue?: T }) => void>,
+    "addListener" | "hasListener" | "removeListener"
+  >;
 
   constructor(key: string, entries: T, options?: Partial<KVStorageOptions>) {
     this.storage = new Storage(key, entries, options);
     this.defaultValue = entries;
+    this.onChanged = this.storage.onChanged;
     this.startWatch();
   }
 
   protected startWatch() {
     this.storage.onChanged.addListener((change: StorageChange<T>) => {
+      if (this.watchers.size === 0) {
+        return;
+      }
       const newValueObject = change.newValue;
       const oldValueObject = change.oldValue;
       if (newValueObject === undefined || oldValueObject === undefined) {
@@ -69,15 +64,11 @@ export class KVStorage<T extends JSONObject> {
     this.storage.set(this.defaultValue);
   }
 
-  watch<W extends Watcher<T>>(key: W["key"], callback: W["callback"]) {
-    this.watchers.add({ key, callback });
+  watch(watcher: Watcher<T>) {
+    this.watchers.add(watcher);
   }
 
-  unwatch(callback: StorageChangedCallback<T[keyof T]>) {
-    for (const e of this.watchers) {
-      if (e.callback === callback) {
-        this.watchers.delete(e);
-      }
-    }
+  unwatch(watcher: Watcher<T>) {
+    this.watchers.delete(watcher);
   }
 }

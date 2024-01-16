@@ -1,51 +1,40 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { type Watcher } from "../types";
+import { StorageChangedCallback } from "../types";
 import { type KVStorage } from "../kv";
 
-export type KVStorageHook<T, K extends keyof T> = readonly [
-  T[K],
-  (value: T[K]) => void,
+export type KVStorageHook<T> = readonly [
+  T,
+  <K extends keyof T>(key: K, value: T[K]) => void,
 ];
 
-export const useKVStorage = <
-  T extends Record<string, unknown>,
-  K extends keyof T,
->(
+export const useKVStorage = <T extends Record<string, unknown>>(
   instance: KVStorage<T>,
-  key: K,
-): KVStorageHook<T, K> => {
+): KVStorageHook<T> => {
   const storage = useRef(instance);
   const isMounted = useRef(false);
 
-  const [renderValue, setRenderValue] = useState<T[K]>(
-    storage.current.get(key),
-  );
+  const [renderValue, setRenderValue] = useState<T>(storage.current.getAll());
 
-  const set = useCallback(
-    (value: T[K]) => {
-      storage.current.set(key, value);
-    },
-    [key],
-  );
+  const set = useCallback(<K extends keyof T>(key: K, value: T[K]) => {
+    storage.current.set(key, value);
+  }, []);
 
   useEffect(() => {
     isMounted.current = true;
-    setRenderValue(storage.current.get(key));
+    setRenderValue(storage.current.getAll());
 
-    const listener: Watcher<T>["callback"] = (change) => {
-      const newValue = change.newValue as T[K] | undefined;
-      if (newValue !== undefined) {
-        setRenderValue(newValue);
+    const listener: StorageChangedCallback<T> = (change) => {
+      if (change.newValue !== undefined) {
+        setRenderValue(change.newValue);
       }
     };
-
-    storage.current.watch(key, listener);
+    storage.current.onChanged.addListener(listener);
 
     return () => {
       isMounted.current = false;
-      storage.current.unwatch(listener);
+      storage.current.onChanged.removeListener(listener);
     };
-  }, [key]);
+  }, []);
 
   return [renderValue, set] as const;
 };

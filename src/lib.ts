@@ -19,34 +19,10 @@ export function overwriteDefault<
 export const getExtensionStorage = (area: StorageAreaName) =>
   globalThis.chrome?.storage[area] ?? globalThis.browser?.storage[area];
 
-export function isObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object";
-}
-
-type CompositeStringify<T extends string, V> = {
-  dataType: T;
-  value: V;
-};
-
-type MapString<K extends string, V> = CompositeStringify<"Map", Array<[K, V]>>;
-type SetString<V> = CompositeStringify<"Set", V[]>;
-
-export function isMapStr<T>(value: unknown): value is MapString<string, T> {
-  return (
-    isObject(value) &&
-    Object.hasOwn(value, "dataType") &&
-    value.dataType === "Map" &&
-    Object.hasOwn(value, "value") &&
-    Array.isArray(value.value)
+export const diffObject = (
+  newObject: Record<string, unknown>,
+  oldObject: Record<string, unknown>,
+) =>
+  Object.fromEntries(
+    Object.entries(newObject).filter(([k, v]) => v !== oldObject[k]),
   );
-}
-
-export function isSetStr<T>(value: unknown): value is SetString<T> {
-  return (
-    isObject(value) &&
-    Object.hasOwn(value, "dataType") &&
-    value.dataType === "Set" &&
-    Object.hasOwn(value, "value") &&
-    Array.isArray(value.value)
-  );
-}

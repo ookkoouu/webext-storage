@@ -1,7 +1,3 @@
-export type JSONPrimitive = string | number | boolean | null;
-export type JSONValue = JSONPrimitive | JSONObject | JSONValue[];
-export type JSONObject = { [key: string]: JSONValue };
-
 export type JsonTransformer = {
   replacer: (key: string, value: unknown) => unknown;
   reviver: (key: string, value: unknown) => unknown;
@@ -20,9 +16,11 @@ export type StorageChange<T = unknown> = { newValue?: T; oldValue?: T };
 export type StorageChangedCallback<T> = (change: StorageChange<T>) => void;
 export type ExtensionStorage = typeof chrome.storage;
 
-export type Watcher<T extends Record<string, unknown>> = {
+export type KVEntries = Record<string, unknown>;
+export type WatchCallback<T> = (change: Required<StorageChange<T>>) => void;
+export type Watcher<T extends KVEntries> = {
   [K in keyof T]: {
     key: K;
-    callback: StorageChangedCallback<T[K]>;
+    callback: WatchCallback<T[K]>;
   };
 }[keyof T];
