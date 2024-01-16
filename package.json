@@ -56,6 +56,7 @@
     "storage",
     "hooks"
   ],
+  "repository": "github:ookkoouu/webext-storage",
   "devDependencies": {
     "@biomejs/biome": "^1.5.1",
     "@types/chrome": "^0.0.256",
