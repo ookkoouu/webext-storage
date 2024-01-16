@@ -1,6 +1,6 @@
 {
   "name": "@okou/webext-storage",
-  "description": "",
+  "description": "A library of Web-Extension Storage with inter context sync, collections, hooks, etc.",
   "version": "1.0.1",
   "author": "okou",
   "license": "MIT-0",

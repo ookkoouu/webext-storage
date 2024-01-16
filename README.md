@@ -1,6 +1,7 @@
 # webext-storage
 
-`@okou/webext-storage` is a utility library of Web-Extension Storage API for realistic use cases inspired by [@plasmohq/storage](https://github.com/PlasmoHQ/storage).
+A library of Web-Extension Storage with inter context sync, collections, hooks, etc.  
+Inspired by [@plasmohq/storage](https://github.com/PlasmoHQ/storage).
 
 ## Features
 
