@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/ookkoouu/webext-storage/compare/v1.0.1...v1.0.2) (2024-01-17)
+
+
+### Bug Fixes
+
+* add legacy export field to `package.json` ([33ece90](https://github.com/ookkoouu/webext-storage/commit/33ece901b9ce924cfada1452cd7da1d447a3b5bf))
+
 ## [1.0.1](https://github.com/ookkoouu/webext-storage/compare/v1.0.0...v1.0.1) (2024-01-16)
 
 
