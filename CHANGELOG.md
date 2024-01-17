@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/ookkoouu/webext-storage/compare/v1.0.2...v1.0.3) (2024-01-17)
+
+
+### Bug Fixes
+
+* **map:** add type argument of key ([811c833](https://github.com/ookkoouu/webext-storage/commit/811c833469ca032c88792b222b60f3ac406c4739))
+
 ## [1.0.2](https://github.com/ookkoouu/webext-storage/compare/v1.0.1...v1.0.2) (2024-01-17)
 
 
