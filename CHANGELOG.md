@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/ookkoouu/webext-storage/compare/v1.0.3...v1.0.4) (2024-01-18)
+
+
+### Bug Fixes
+
+* fix [#4](https://github.com/ookkoouu/webext-storage/issues/4) ([06ad927](https://github.com/ookkoouu/webext-storage/commit/06ad92794a4a0dc715c52ff2ac25bd3030e0b3ac))
+
 ## [1.0.3](https://github.com/ookkoouu/webext-storage/compare/v1.0.2...v1.0.3) (2024-01-17)
 
 
