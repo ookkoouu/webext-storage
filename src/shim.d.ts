@@ -1,3 +1,3 @@
 export declare global {
-  var browser: chrome;
+	var browser: chrome;
 }
