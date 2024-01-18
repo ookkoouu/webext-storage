@@ -1,4 +1,5 @@
 pre-commit:
+  parallel: true
   commands:
     format:
       glob: "*.{ts,tsx,json,md,yml,yml}"
@@ -9,4 +10,9 @@ pre-commit:
       glob: "*.{ts,tsx}"
       run: |
         npx biome lint --apply {staged_files}
+        git add {staged_files}
+    test:
+      glob: "*.{ts,tsx}"
+      run: |
+        npm run typecheck
         git add {staged_files}
