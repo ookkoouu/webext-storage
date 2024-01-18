@@ -17,11 +17,13 @@ export type MapStorageHook<T> = readonly [
   },
 ];
 
-export function useMapStorage<T>(instance: MapStorage<T>): MapStorageHook<T> {
+export function useMapStorage<K extends string, V>(
+  instance: MapStorage<K, V>,
+): MapStorageHook<V> {
   const storage = useRef(instance);
   const isMounted = useRef(false);
 
-  const [renderValue, setRenderValue] = useState<Array<[string, T]>>(
+  const [renderValue, setRenderValue] = useState<Array<[K, V]>>(
     instance.defaultValue,
   );
 
@@ -29,11 +31,11 @@ export function useMapStorage<T>(instance: MapStorage<T>): MapStorageHook<T> {
   const clear = useCallback(() => {
     storage.current.clear();
   }, []);
-  const _delete = useCallback((key: string) => storage.current.delete(key), []);
-  const get = useCallback((key: string) => storage.current.get(key), []);
-  const has = useCallback((key: string) => storage.current.has(key), []);
+  const _delete = useCallback((key: K) => storage.current.delete(key), []);
+  const get = useCallback((key: K) => storage.current.get(key), []);
+  const has = useCallback((key: K) => storage.current.has(key), []);
   const set = useCallback(
-    (key: string, value: T) => storage.current.set(key, value),
+    (key: K, value: V) => storage.current.set(key, value),
     [],
   );
   const entries = useCallback(() => storage.current.entries(), []);
@@ -44,7 +46,7 @@ export function useMapStorage<T>(instance: MapStorage<T>): MapStorageHook<T> {
     isMounted.current = true;
     setRenderValue([...storage.current.entries()]);
 
-    const listener: StorageChangedCallback<Array<[string, T]>> = (change) => {
+    const listener: StorageChangedCallback<Array<[K, V]>> = (change) => {
       if (change.newValue !== undefined) {
         setRenderValue(change.newValue);
       }
