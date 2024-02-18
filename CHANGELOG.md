@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.5](https://github.com/ookkoouu/webext-storage/compare/v1.0.4...v1.0.5) (2024-02-18)
+
+
+### Bug Fixes
+
+* remove unnecessary refs ([1aa6741](https://github.com/ookkoouu/webext-storage/commit/1aa67416d295e64c9c02722e7be59471d893809e))
+
 ## [1.0.4](https://github.com/ookkoouu/webext-storage/compare/v1.0.3...v1.0.4) (2024-01-18)
 
 
