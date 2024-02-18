@@ -20,31 +20,28 @@ export type MapStorageHook<T> = readonly [
 export function useMapStorage<K extends string, V>(
 	instance: MapStorage<K, V>,
 ): MapStorageHook<V> {
-	const storage = useRef(instance);
 	const isMounted = useRef(false);
 
 	const [renderValue, setRenderValue] = useState<Array<[K, V]>>(
 		instance.defaultValue,
 	);
 
-	const toObject = useCallback(() => storage.current.toObject(), []);
-	const clear = useCallback(() => {
-		storage.current.clear();
-	}, []);
-	const _delete = useCallback((key: K) => storage.current.delete(key), []);
-	const get = useCallback((key: K) => storage.current.get(key), []);
-	const has = useCallback((key: K) => storage.current.has(key), []);
+	const toObject = useCallback(() => instance.toObject(), [instance]);
+	const clear = useCallback(() => instance.clear(), [instance]);
+	const _delete = useCallback((key: K) => instance.delete(key), [instance]);
+	const get = useCallback((key: K) => instance.get(key), [instance]);
+	const has = useCallback((key: K) => instance.has(key), [instance]);
 	const set = useCallback(
-		(key: K, value: V) => storage.current.set(key, value),
-		[],
+		(key: K, value: V) => instance.set(key, value),
+		[instance],
 	);
-	const entries = useCallback(() => storage.current.entries(), []);
-	const keys = useCallback(() => storage.current.keys(), []);
-	const values = useCallback(() => storage.current.values(), []);
+	const entries = useCallback(() => instance.entries(), [instance]);
+	const keys = useCallback(() => instance.keys(), [instance]);
+	const values = useCallback(() => instance.values(), [instance]);
 
 	useEffect(() => {
 		isMounted.current = true;
-		setRenderValue([...storage.current.entries()]);
+		setRenderValue([...instance.entries()]);
 
 		const listener: StorageChangedCallback<Array<[K, V]>> = (change) => {
 			if (change.newValue !== undefined) {
@@ -52,13 +49,13 @@ export function useMapStorage<K extends string, V>(
 			}
 		};
 
-		storage.current.onChanged.addListener(listener);
+		instance.onChanged.addListener(listener);
 
 		return () => {
 			isMounted.current = false;
-			storage.current.onChanged.removeListener(listener);
+			instance.onChanged.removeListener(listener);
 		};
-	}, []);
+	}, [instance]);
 
 	return [
 		renderValue,

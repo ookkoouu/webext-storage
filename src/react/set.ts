@@ -15,23 +15,20 @@ export type SetStorageHook<T> = readonly [
 ];
 
 export function useSetStorage<T>(instance: SetStorage<T>): SetStorageHook<T> {
-	const storage = useRef(instance);
 	const isMounted = useRef(false);
 
 	const [renderValue, setRenderValue] = useState<T[]>(instance.defaultValue);
 
-	const add = useCallback((value: T) => storage.current.add(value), []);
-	const clear = useCallback(() => {
-		storage.current.clear();
-	}, []);
-	const _delete = useCallback((value: T) => storage.current.delete(value), []);
-	const has = useCallback((value: T) => storage.current.has(value), []);
-	const entries = useCallback(() => storage.current.entries(), []);
-	const values = useCallback(() => storage.current.values(), []);
+	const add = useCallback((value: T) => instance.add(value), [instance]);
+	const clear = useCallback(() => instance.clear(), [instance]);
+	const _delete = useCallback((value: T) => instance.delete(value), [instance]);
+	const has = useCallback((value: T) => instance.has(value), [instance]);
+	const entries = useCallback(() => instance.entries(), [instance]);
+	const values = useCallback(() => instance.values(), [instance]);
 
 	useEffect(() => {
 		isMounted.current = true;
-		setRenderValue([...storage.current.values()]);
+		setRenderValue([...instance.values()]);
 
 		const listener: StorageChangedCallback<T[]> = (change) => {
 			if (change.newValue !== undefined) {
@@ -39,13 +36,13 @@ export function useSetStorage<T>(instance: SetStorage<T>): SetStorageHook<T> {
 			}
 		};
 
-		storage.current.onChanged.addListener(listener);
+		instance.onChanged.addListener(listener);
 
 		return () => {
 			isMounted.current = false;
-			storage.current.onChanged.removeListener(listener);
+			instance.onChanged.removeListener(listener);
 		};
-	}, []);
+	}, [instance]);
 
 	return [
 		renderValue,
