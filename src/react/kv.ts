@@ -15,7 +15,7 @@ export const useKVStorage = <T extends Record<string, unknown>>(
 ): KVStorageHook<T> => {
 	const isMounted = useRef(false);
 
-	const [renderValue, setRenderValue] = useState<T>(instance.get());
+	const [renderValue, setRenderValue] = useState(instance.get());
 
 	const set = useCallback((value: T) => instance.set(value), [instance]);
 	const setItem = useCallback(
@@ -40,4 +40,32 @@ export const useKVStorage = <T extends Record<string, unknown>>(
 	}, [instance]);
 
 	return [renderValue, { set, setItem, reset }] as const;
+};
+
+export type KVStorageItemHook<T> = readonly [T, (value: T) => void];
+
+export const useKVStorageItem = <
+	T extends Record<string, unknown>,
+	K extends keyof T,
+>(
+	instance: KVStorage<T>,
+	key: K,
+) => {
+	const [renderValue, setRenderValue] = useState(instance.getItem(key));
+
+	const setItem = useCallback(
+		(value: T[K]) => instance.setItem(key, value),
+		[instance, key],
+	);
+
+	useEffect(() => {
+		const unwatch = instance.watchItem(key, (newValue) => {
+			setRenderValue(newValue);
+		});
+		return () => {
+			unwatch();
+		};
+	}, [instance, key]);
+
+	return [renderValue, setItem] as const;
 };
