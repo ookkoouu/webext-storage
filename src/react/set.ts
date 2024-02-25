@@ -10,6 +10,7 @@ export type SetStorageHook<T> = readonly [
 		has(value: T): boolean;
 		entries(): IterableIterator<[T, T]>;
 		values(): IterableIterator<T>;
+		reset(): void;
 	},
 ];
 
@@ -24,6 +25,7 @@ export function useSetStorage<T>(instance: SetStorage<T>): SetStorageHook<T> {
 	const has = useCallback((value: T) => instance.has(value), [instance]);
 	const entries = useCallback(() => instance.entries(), [instance]);
 	const values = useCallback(() => instance.values(), [instance]);
+	const reset = useCallback(() => instance.reset(), [instance]);
 
 	useEffect(() => {
 		isMounted.current = true;
@@ -50,6 +52,7 @@ export function useSetStorage<T>(instance: SetStorage<T>): SetStorageHook<T> {
 			has,
 			entries,
 			values,
+			reset,
 		},
 	] as const;
 }

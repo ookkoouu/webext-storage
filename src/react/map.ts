@@ -14,6 +14,7 @@ export type MapStorageHook<T> = readonly [
 		entries(): IterableIterator<[string, T]>;
 		keys(): IterableIterator<string>;
 		values(): IterableIterator<T>;
+		reset(): void;
 	},
 ];
 
@@ -38,6 +39,7 @@ export function useMapStorage<K extends string, V>(
 	const entries = useCallback(() => instance.entries(), [instance]);
 	const keys = useCallback(() => instance.keys(), [instance]);
 	const values = useCallback(() => instance.values(), [instance]);
+	const reset = useCallback(() => instance.reset(), [instance]);
 
 	useEffect(() => {
 		isMounted.current = true;
@@ -66,6 +68,7 @@ export function useMapStorage<K extends string, V>(
 			entries,
 			keys,
 			values,
+			reset,
 		},
 	] as const;
 }

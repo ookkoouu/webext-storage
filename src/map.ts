@@ -32,12 +32,15 @@ export class MapStorage<K, V> implements IMapStorage<K, V> {
 		);
 		this.#storage = new Storage(key, defaultValue, _options);
 		this.#options = { deepEqual: _options.deepEqual ?? false };
-		this.#cache = new Map(defaultValue);
 		this.defaultValue = defaultValue;
+		this.#cache = new Map(defaultValue);
+		this.#storage.get().then((value) => {
+			this.#cache = new Map(value);
+		});
 	}
 
 	#save() {
-		this.#storage.setSync([...this.#cache]);
+		this.#storage.set([...this.#cache]);
 	}
 
 	reset(): void {

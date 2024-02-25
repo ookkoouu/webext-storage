@@ -8,10 +8,10 @@ export type StorageDriverWatchCallback<T> = (
 	newValue?: T,
 	oldValue?: T,
 ) => void;
-export type StorageDriver = {
-	get: <T>(key: string) => Promise<T | undefined>;
-	set: <T>(key: string, value: T) => Promise<void>;
-	watch: <T>(callback: StorageDriverWatchCallback<T>) => () => void;
+export type StorageDriver<T> = {
+	get: (key: string) => Promise<T | undefined>;
+	set: (key: string, value: T) => Promise<void>;
+	watch: (callback: StorageDriverWatchCallback<T>) => () => void;
 };
 
 type StorageAreaChanges = ExtStorage.StorageAreaOnChangedChangesType;
@@ -21,7 +21,7 @@ type DefaultDriverOptions = {
 	transformer: JsonTransformer;
 };
 
-export class DefaultDriver implements StorageDriver {
+export class DefaultDriver<T> implements StorageDriver<T> {
 	#storage: ExtStorage.StorageArea;
 	#transformer: JsonTransformer;
 	constructor(options?: Partial<DefaultDriverOptions>) {
@@ -32,7 +32,7 @@ export class DefaultDriver implements StorageDriver {
 		);
 	}
 
-	#jsonParse<T>(value: string): T {
+	#jsonParse(value: string): T {
 		return JSON.parse(value, this.#transformer.reviver);
 	}
 
@@ -40,17 +40,17 @@ export class DefaultDriver implements StorageDriver {
 		return JSON.stringify(value, this.#transformer.replacer);
 	}
 
-	async get<T>(key: string): Promise<T | undefined> {
+	async get(key: string): Promise<T | undefined> {
 		const raw = await this.#storage.get({ [key]: undefined });
 		if (raw[key] === undefined && typeof raw[key] !== "string") return;
-		return this.#jsonParse<T>(raw[key]);
+		return this.#jsonParse(raw[key]);
 	}
 
-	async set<T>(key: string, value: T): Promise<void> {
+	async set(key: string, value: T): Promise<void> {
 		await this.#storage.set({ [key]: this.#jsonStringify(value) });
 	}
 
-	watch<T>(callback: StorageDriverWatchCallback<T>): () => void {
+	watch(callback: StorageDriverWatchCallback<T>): () => void {
 		const _cb: StorageAreaChangedCallback = (change) => {
 			for (const [k, v] of Object.entries(change)) {
 				const newValue =

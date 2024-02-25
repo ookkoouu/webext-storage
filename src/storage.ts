@@ -42,7 +42,7 @@ export class Storage<T> implements IStorage<T> {
 	readonly key: string;
 	readonly defaultValue: T;
 	#cache: T;
-	#driver: StorageDriver;
+	#driver: StorageDriver<StorageValue<T>>;
 	#instanceId: string;
 	#options = defaultOptions;
 	#watchers: Map<string, WatchCallback<T>>;
@@ -66,16 +66,18 @@ export class Storage<T> implements IStorage<T> {
 			transformer: this.#options.transformer,
 		});
 
-		this.#driver.watch(this.#changedPublisher);
+		this.#driver.watch((key, nv, ov) => this.#changedPublisher(key, nv, ov));
 		if (this.#options.sync) {
 			this.#startSync();
 		}
+		// restore cache
+		this.get();
 	}
 
 	#startSync() {
-		this.watch((newValue) => {
+		this.#driver.watch((_, newValue) => {
 			if (newValue !== undefined) {
-				this.#cache = newValue;
+				this.#cache = newValue.v;
 			}
 		});
 	}
@@ -97,12 +99,13 @@ export class Storage<T> implements IStorage<T> {
 	}
 
 	async #internalGet(): Promise<StorageValue<T> | undefined> {
-		return await this.#driver.get<StorageValue<T>>(this.key);
+		return await this.#driver.get(this.key);
 	}
 
 	async get(): Promise<T> {
 		const raw = await this.#internalGet();
 		if (raw === undefined) return structuredClone(this.defaultValue);
+		this.#cache = raw.v;
 		return raw.v;
 	}
 
@@ -142,7 +145,7 @@ export class Storage<T> implements IStorage<T> {
 		const unwatcher = () => {
 			this.#watchers.delete(id);
 		};
-		Object.defineProperty(unwatcher, "id", id);
+		unwatcher.id = id;
 		return unwatcher as Unwatcher;
 	}
 

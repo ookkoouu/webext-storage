@@ -28,12 +28,15 @@ export class SetStorage<T> implements ISetStorage<T> {
 		);
 		this.#storage = new Storage(key, defaultValue, _options);
 		this.#options = { deepEqual: _options.deepEqual ?? false };
-		this.#cache = new Set(defaultValue);
 		this.defaultValue = defaultValue;
+		this.#cache = new Set(defaultValue);
+		this.#storage.get().then((value) => {
+			this.#cache = new Set(value);
+		});
 	}
 
 	#save() {
-		this.#storage.setSync([...this.#cache]);
+		this.#storage.set([...this.#cache]);
 	}
 
 	reset() {

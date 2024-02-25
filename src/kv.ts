@@ -13,6 +13,7 @@ export class KVStorage<T extends Record<string, unknown>>
 
 	constructor(key: string, defaultValue: T, options?: KVStorageOptions) {
 		this.#storage = new Storage(key, defaultValue, options);
+		this.#storage.get();
 	}
 
 	get(): T {
@@ -24,13 +25,13 @@ export class KVStorage<T extends Record<string, unknown>>
 	}
 
 	set(value: T): void {
-		this.#storage.setSync(value);
+		this.#storage.set(value);
 	}
 
 	setItem<K extends keyof T>(key: K, value: T[K]): void {
 		const cache = this.#storage.getSync();
 		cache[key] = value;
-		this.#storage.setSync(cache);
+		this.#storage.set(cache);
 	}
 
 	reset(): void {

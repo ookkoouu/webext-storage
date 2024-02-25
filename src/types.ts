@@ -33,14 +33,14 @@ export type Unwatcher = {
 /**
  * Enables to watch value changes
  */
-interface Watchable<T> {
+export type Watchable<T> = {
 	watch: (callback: WatchCallback<T>) => Unwatcher;
 	/**
 	 * Remove all watchers if `id` specified, otherwise remove all watchers.
 	 * @param id
 	 */
 	unwatch: (id?: string) => void;
-}
+};
 
 export interface IStorage<T> extends Watchable<T> {
 	get: () => Promise<T>;
