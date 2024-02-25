@@ -21,7 +21,11 @@ export class SetStorage<T> implements ISetStorage<T> {
 	defaultValue: T[];
 	#cache: Set<T>;
 
-	constructor(key: string, defaultValue: T[], options?: SetStorageOptions) {
+	constructor(
+		key: string,
+		defaultValue: T[],
+		options?: Partial<SetStorageOptions>,
+	) {
 		const _options = mergeDefault<Partial<SetStorageOptions>>(
 			defaultOptions,
 			options,

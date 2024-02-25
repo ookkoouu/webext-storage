@@ -11,7 +11,11 @@ export class KVStorage<T extends Record<string, unknown>>
 {
 	#storage: Storage<T>;
 
-	constructor(key: string, defaultValue: T, options?: KVStorageOptions) {
+	constructor(
+		key: string,
+		defaultValue: T,
+		options?: Partial<KVStorageOptions>,
+	) {
 		this.#storage = new Storage(key, defaultValue, options);
 		this.#storage.get();
 	}

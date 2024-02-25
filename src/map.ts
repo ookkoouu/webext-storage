@@ -24,7 +24,7 @@ export class MapStorage<K, V> implements IMapStorage<K, V> {
 	constructor(
 		key: string,
 		defaultValue: [K, V][],
-		options?: MapStorageOptions,
+		options?: Partial<MapStorageOptions>,
 	) {
 		const _options = mergeDefault<Partial<MapStorageOptions>>(
 			defaultOptions,
