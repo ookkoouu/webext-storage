@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/ookkoouu/webext-storage/compare/v2.0.0...v2.0.1) (2024-02-25)
+
+
+### Bug Fixes
+
+* partialize options ([5464b7d](https://github.com/ookkoouu/webext-storage/commit/5464b7daf635a1572ec893d05da69cdb690e30f4))
+
 ## [2.0.0](https://github.com/ookkoouu/webext-storage/compare/v1.0.5...v2.0.0) (2024-02-25)
 
 
