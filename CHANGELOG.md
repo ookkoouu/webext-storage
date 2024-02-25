@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/ookkoouu/webext-storage/compare/v2.0.1...v2.0.2) (2024-02-25)
+
+
+### Bug Fixes
+
+* changes trigger itself ([e80b116](https://github.com/ookkoouu/webext-storage/commit/e80b11661eb35820c02498cf6d46dab78a1958ab))
+
 ## [2.0.1](https://github.com/ookkoouu/webext-storage/compare/v2.0.0...v2.0.1) (2024-02-25)
 
 
