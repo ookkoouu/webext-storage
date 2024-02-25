@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.0.0](https://github.com/ookkoouu/webext-storage/compare/v1.0.5...v2.0.0) (2024-02-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* improve api
+
+### Features
+
+* add useKVStorageItem ([5d07595](https://github.com/ookkoouu/webext-storage/commit/5d07595700c57c9ed3de65f095941983d5138088))
+
+
+### Bug Fixes
+
+* fix cache bug ([470994a](https://github.com/ookkoouu/webext-storage/commit/470994a1c9d7ad6b57e1422a9b7042bf6f99aaee))
+
+
+### Code Refactoring
+
+* improve api ([ceaacf7](https://github.com/ookkoouu/webext-storage/commit/ceaacf76aecd0cbf482159e359a3e7d3500043a8))
+
 ## [1.0.5](https://github.com/ookkoouu/webext-storage/compare/v1.0.4...v1.0.5) (2024-02-18)
 
 
