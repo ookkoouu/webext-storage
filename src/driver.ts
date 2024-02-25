@@ -41,7 +41,7 @@ export class DefaultDriver<T> implements StorageDriver<T> {
 	}
 
 	async get(key: string): Promise<T | undefined> {
-		const raw = await this.#storage.get({ [key]: undefined });
+		const raw = await this.#storage.get(key);
 		if (raw[key] === undefined && typeof raw[key] !== "string") return;
 		return this.#jsonParse(raw[key]);
 	}
