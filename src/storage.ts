@@ -10,27 +10,6 @@ import type {
 	WatchCallback,
 } from "./types";
 
-type Metadata = {
-	/**
-	 * updatedBy: last updated instance id
-	 */
-	ub: string;
-	/**
-	 * version
-	 */
-	v: number;
-};
-type StorageValue<T> = {
-	/**
-	 * value of user data
-	 */
-	v: T;
-	/**
-	 * metadata of storage item
-	 */
-	m: Metadata;
-};
-
 const defaultOptions: StorageOptions = {
 	area: "local",
 	sync: true,
@@ -42,14 +21,12 @@ export class Storage<T> implements IStorage<T> {
 	readonly key: string;
 	readonly defaultValue: T;
 	#cache: T;
-	#driver: StorageDriver<StorageValue<T>>;
-	#instanceId: string;
+	#driver: StorageDriver<T>;
 	#options = defaultOptions;
 	#watchers: Map<string, WatchCallback<T>>;
 
 	constructor(key: string, defaultValue: T, options?: Partial<StorageOptions>) {
 		this.key = key;
-		this.#instanceId = nanoid(8);
 		this.defaultValue = defaultValue;
 		this.#cache = defaultValue;
 		this.#watchers = new Map();
@@ -77,36 +54,31 @@ export class Storage<T> implements IStorage<T> {
 	#startSync() {
 		this.#driver.watch((_, newValue) => {
 			if (newValue !== undefined) {
-				this.#cache = newValue.v;
+				this.#cache = newValue;
 			}
 		});
 	}
 
-	#changedPublisher(
-		key: string,
-		newValue?: StorageValue<T>,
-		oldValue?: StorageValue<T>,
-	) {
+	#changedPublisher(key: string, newValue?: T, oldValue?: T) {
 		if (key !== this.key) return;
 		if (newValue === undefined) {
 			return;
 		}
-		if (newValue.m.ub === this.#instanceId) return;
-		if (deepEqual(newValue.v, oldValue?.v)) return;
+		if (deepEqual(newValue, oldValue)) return;
 		for (const [, watcher] of this.#watchers) {
-			watcher(newValue.v, oldValue?.v);
+			watcher(newValue, oldValue);
 		}
 	}
 
-	async #internalGet(): Promise<StorageValue<T> | undefined> {
+	async #internalGet(): Promise<T | undefined> {
 		return await this.#driver.get(this.key);
 	}
 
 	async get(): Promise<T> {
-		const raw = await this.#internalGet();
-		if (raw === undefined) return structuredClone(this.defaultValue);
-		this.#cache = raw.v;
-		return raw.v;
+		const value = await this.#internalGet();
+		if (value === undefined) return structuredClone(this.defaultValue);
+		this.#cache = value;
+		return value;
 	}
 
 	getSync(): T {
@@ -114,14 +86,7 @@ export class Storage<T> implements IStorage<T> {
 	}
 
 	async #internalSet(value: T) {
-		const raw: StorageValue<T> = {
-			v: value,
-			m: {
-				ub: this.#instanceId,
-				v: this.#options.version,
-			},
-		};
-		await this.#driver.set(this.key, raw);
+		await this.#driver.set(this.key, value);
 	}
 
 	async set(value: T): Promise<void> {
