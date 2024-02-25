@@ -1,26 +1,73 @@
+import type { Storage as ExtStorage } from "webextension-polyfill";
+
+export type StorageAreaName = keyof Pick<
+	ExtStorage.Static,
+	"local" | "sync" | "session"
+>;
+
 export type JsonTransformer = {
 	replacer: (key: string, value: unknown) => unknown;
 	reviver: (key: string, value: unknown) => unknown;
 };
 
-export type StorageArea = chrome.storage.StorageArea;
-export type StorageAreaName = keyof Pick<
-	typeof chrome.storage,
-	"local" | "sync" | "session"
->;
-type StorageAreaChangedCallback = Parameters<
-	typeof chrome.storage.local.onChanged.addListener
->[0];
-export type StorageChanges = Parameters<StorageAreaChangedCallback>[0];
-export type StorageChange<T = unknown> = { newValue?: T; oldValue?: T };
-export type StorageChangedCallback<T> = (change: StorageChange<T>) => void;
-export type ExtensionStorage = typeof chrome.storage;
+export type StorageOptions = {
+	area: StorageAreaName;
+	sync: boolean;
+	transformer: JsonTransformer;
+	version: number;
+};
+export interface SetStorageOptions extends StorageOptions {
+	deepEqual: boolean;
+}
+export interface MapStorageOptions extends StorageOptions {
+	deepEqual: boolean;
+}
+export interface KVStorageOptions extends StorageOptions {}
 
-export type KVEntries = Record<string, unknown>;
-export type WatchCallback<T> = (change: Required<StorageChange<T>>) => void;
-export type Watcher<T extends KVEntries> = {
-	[K in keyof T]: {
-		key: K;
-		callback: WatchCallback<T[K]>;
-	};
-}[keyof T];
+export type WatchCallback<T> = (newValue: T, oldValue?: T) => void;
+export type Unwatcher = {
+	(): void;
+	id: string;
+};
+
+/**
+ * Enables to watch value changes
+ */
+interface Watchable<T> {
+	watch: (callback: WatchCallback<T>) => Unwatcher;
+	/**
+	 * Remove all watchers if `id` specified, otherwise remove all watchers.
+	 * @param id
+	 */
+	unwatch: (id?: string) => void;
+}
+
+export interface IStorage<T> extends Watchable<T> {
+	get: () => Promise<T>;
+	getSync: () => T;
+	set: (value: T) => Promise<void>;
+	setSync: (value: T) => void;
+	reset: () => Promise<void>;
+}
+
+export interface IKVStorage<T extends Record<string, unknown>>
+	extends Watchable<T> {
+	get: () => T;
+	getItem: <K extends keyof T>(key: K) => T[K];
+	set: (value: T) => void;
+	setItem: <K extends keyof T>(key: K, value: T[K]) => void;
+	reset: () => void;
+	watchItem: <K extends keyof T>(
+		key: K,
+		callback: WatchCallback<T[K]>,
+	) => Unwatcher;
+}
+
+export interface IMapStorage<K, V> extends Map<K, V>, Watchable<Map<K, V>> {
+	reset: () => void;
+	// toObject: () => Record<K, V>;
+}
+
+export interface ISetStorage<T> extends Set<T>, Watchable<Set<T>> {
+	reset: () => void;
+}

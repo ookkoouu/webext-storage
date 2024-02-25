@@ -1,6 +1,5 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import { type StorageChangedCallback } from "../types";
-import { type Storage } from "../storage";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Storage } from "../storage";
 
 export type StorageHook<T> = readonly [
 	T,
@@ -28,19 +27,19 @@ export const useStorage = <T>(instance: Storage<T>): StorageHook<T> => {
 
 	useEffect(() => {
 		isMounted.current = true;
-		setRenderValue(instance.getSync());
-
-		const listener: StorageChangedCallback<T> = (change) => {
-			if (change.newValue !== undefined && isMounted.current) {
-				setRenderValue(change.newValue);
+		instance
+			.get()
+			.then((v) => setRenderValue(v))
+			.catch();
+		const unwatcher = instance.watch((newValue) => {
+			if (isMounted.current) {
+				setRenderValue(newValue);
 			}
-		};
-
-		instance.onChanged.addListener(listener);
+		});
 
 		return () => {
 			isMounted.current = false;
-			instance.onChanged.removeListener(listener);
+			unwatcher();
 		};
 	}, [instance]);
 

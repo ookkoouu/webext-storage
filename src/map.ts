@@ -1,102 +1,139 @@
-import { Storage, type StorageOptions } from "./storage";
+import deepEqual from "fast-deep-equal";
+import { mergeDefault } from "./lib";
+import { Storage } from "./storage";
+import type {
+	IMapStorage,
+	MapStorageOptions,
+	StorageOptions,
+	Unwatcher,
+	WatchCallback,
+} from "./types";
 
-export type MapStorageOptions<K extends string, V> = {
-	defaultValue: Record<K, V> | Array<[K, V]>;
-} & StorageOptions;
+type Options = Omit<MapStorageOptions, keyof StorageOptions>;
 
-export class MapStorage<K extends string, V> implements Map<K, V> {
-	protected storage: Storage<Array<[K, V]>>;
-	protected cache: Map<K, V>;
-	readonly defaultValue: Array<[K, V]>;
-	get size(): number {
-		return this.cache.size;
+const defaultOptions: Options = {
+	deepEqual: false,
+};
+
+export class MapStorage<K, V> implements IMapStorage<K, V> {
+	#storage: Storage<[K, V][]>;
+	#options: Options;
+	defaultValue: [K, V][];
+	#cache: Map<K, V>;
+
+	constructor(
+		key: string,
+		defaultValue: [K, V][],
+		options?: MapStorageOptions,
+	) {
+		const _options = mergeDefault<Partial<MapStorageOptions>>(
+			defaultOptions,
+			options,
+		);
+		this.#storage = new Storage(key, defaultValue, _options);
+		this.#options = { deepEqual: _options.deepEqual ?? false };
+		this.#cache = new Map(defaultValue);
+		this.defaultValue = defaultValue;
 	}
 
-	onChanged: Pick<
-		chrome.events.Event<
-			(change: { newValue?: Array<[K, V]>; oldValue?: Array<[K, V]> }) => void
-		>,
-		"addListener" | "hasListener" | "removeListener"
-	>;
-
-	constructor(key: string, options?: Partial<MapStorageOptions<K, V>>) {
-		let init = options?.defaultValue ?? [];
-		init = Array.isArray(init) ? init : (Object.entries(init) as [K, V][]);
-		this.defaultValue = init;
-		this.storage = new Storage(key, init, options);
-		this.cache = new Map<K, V>();
-		this.onChanged = this.storage.onChanged;
+	#save() {
+		this.#storage.setSync([...this.#cache]);
 	}
 
-	protected startSync() {
-		this.storage.onChanged.addListener((change) => {
-			if (change.newValue === undefined) {
-				return;
-			}
-
-			this.cache = new Map<K, V>(change.newValue);
-		});
-	}
-
-	protected async save() {
-		return this.storage.set([...this.cache]);
-	}
-
-	protected async restore() {
-		const remote = await this.storage.get();
-		this.cache = new Map(remote);
-	}
-
-	toObject(): Record<K, V> {
-		return Object.fromEntries(this.cache.entries()) as Record<K, V>;
+	reset(): void {
+		this.#cache = new Map(this.defaultValue);
+		this.#storage.reset();
+		this.#save();
 	}
 
 	clear(): void {
-		this.cache.clear();
+		this.#cache.clear();
+		this.#save();
 	}
 
 	delete(key: K): boolean {
-		const res = this.cache.delete(key);
-		this.save();
+		if (this.#options.deepEqual) {
+			for (const cacheKey of this.#cache.keys()) {
+				if (deepEqual(key, cacheKey)) {
+					const res = this.#cache.delete(cacheKey);
+					this.#save();
+					return res;
+				}
+				return false;
+			}
+		}
+		const res = this.#cache.delete(key);
+		this.#save();
 		return res;
 	}
 
 	forEach(
 		callbackfn: (value: V, key: K, map: Map<K, V>) => void,
-		thisArg?: unknown,
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+		thisArg?: any,
 	): void {
-		this.cache.forEach(callbackfn, thisArg);
+		this.#cache.forEach(callbackfn, thisArg);
 	}
 
 	get(key: K): V | undefined {
-		return this.cache.get(key);
+		if (this.#options.deepEqual) {
+			for (const cacheKey of this.#cache.keys()) {
+				if (deepEqual(key, cacheKey)) {
+					return this.#cache.get(cacheKey);
+				}
+				return;
+			}
+		}
+		return this.#cache.get(key);
 	}
 
 	has(key: K): boolean {
-		return this.cache.has(key);
+		if (this.#options.deepEqual) {
+			for (const cacheKey of this.#cache.keys()) {
+				if (deepEqual(key, cacheKey)) {
+					return this.#cache.has(cacheKey);
+				}
+				return false;
+			}
+		}
+		return this.#cache.has(key);
 	}
 
 	set(key: K, value: V): this {
-		this.cache.set(key, value);
-		this.save();
+		this.#cache.set(key, value);
+		this.#save();
 		return this;
 	}
 
+	get size(): number {
+		return this.#cache.size;
+	}
+
 	entries(): IterableIterator<[K, V]> {
-		return this.cache.entries();
+		return this.#cache.entries();
 	}
 
 	keys(): IterableIterator<K> {
-		return this.cache.keys();
+		return this.#cache.keys();
 	}
 
 	values(): IterableIterator<V> {
-		return this.cache.values();
+		return this.#cache.values();
 	}
 
 	[Symbol.iterator](): IterableIterator<[K, V]> {
-		return this.cache.entries();
+		return this.#cache.entries();
 	}
 
 	[Symbol.toStringTag] = "MapStorage";
+
+	watch(callback: WatchCallback<Map<K, V>>): Unwatcher {
+		return this.#storage.watch((newValue, oldValue) => {
+			callback(new Map(newValue), oldValue ? new Map(oldValue) : undefined);
+		});
+	}
+
+	unwatch(id?: string | undefined): void {
+		this.#storage.unwatch(id);
+	}
 }

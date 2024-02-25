@@ -1,11 +1,11 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import { type StorageChangedCallback } from "../types";
-import { type MapStorage } from "../map";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import type { MapStorage } from "../map";
 
 export type MapStorageHook<T> = readonly [
 	value: Array<[string, T]>,
 	storage: {
-		toObject(): Record<string, T>;
+		// toObject(): Record<string, T>;
 		clear(): void;
 		delete(key: string): boolean;
 		get(key: string): T | undefined;
@@ -26,7 +26,7 @@ export function useMapStorage<K extends string, V>(
 		instance.defaultValue,
 	);
 
-	const toObject = useCallback(() => instance.toObject(), [instance]);
+	// const toObject = useCallback(() => instance.toObject(), [instance]);
 	const clear = useCallback(() => instance.clear(), [instance]);
 	const _delete = useCallback((key: K) => instance.delete(key), [instance]);
 	const get = useCallback((key: K) => instance.get(key), [instance]);
@@ -43,24 +43,21 @@ export function useMapStorage<K extends string, V>(
 		isMounted.current = true;
 		setRenderValue([...instance.entries()]);
 
-		const listener: StorageChangedCallback<Array<[K, V]>> = (change) => {
-			if (change.newValue !== undefined) {
-				setRenderValue(change.newValue);
+		const unwatch = instance.watch((newValue) => {
+			if (isMounted.current) {
+				setRenderValue([...newValue]);
 			}
-		};
-
-		instance.onChanged.addListener(listener);
-
+		});
 		return () => {
 			isMounted.current = false;
-			instance.onChanged.removeListener(listener);
+			unwatch();
 		};
 	}, [instance]);
 
 	return [
 		renderValue,
 		{
-			toObject,
+			// toObject,
 			clear,
 			delete: _delete,
 			get,

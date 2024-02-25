@@ -1,11 +1,15 @@
-export { Storage, type StorageOptions } from "./storage";
-export { SetStorage, type SetStorageOptions } from "./set";
-export { MapStorage, type MapStorageOptions } from "./map";
-export { KVStorage, type KVStorageOptions } from "./kv";
 export type {
-	StorageArea,
+	JsonTransformer,
+	KVStorageOptions,
+	MapStorageOptions,
+	SetStorageOptions,
 	StorageAreaName,
-	StorageChangedCallback,
-	StorageChange,
-	StorageChanges,
+	StorageOptions,
+	Unwatcher,
+	WatchCallback,
 } from "./types";
+
+export { Storage } from "./storage";
+export { MapStorage } from "./map";
+export { SetStorage } from "./set";
+export { KVStorage } from "./kv";

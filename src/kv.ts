@@ -1,74 +1,59 @@
-import { diffObject } from "./lib";
-import { Storage, type StorageOptions } from "./storage";
-import type { KVEntries, StorageChange, Watcher } from "./types";
+import { Storage } from "./storage";
+import type {
+	IKVStorage,
+	KVStorageOptions,
+	Unwatcher,
+	WatchCallback,
+} from "./types";
 
-export type KVStorageOptions = StorageOptions;
+export class KVStorage<T extends Record<string, unknown>>
+	implements IKVStorage<T>
+{
+	#storage: Storage<T>;
 
-export class KVStorage<T extends KVEntries> {
-	protected storage: Storage<T>;
-	readonly defaultValue: T;
-	protected watchers = new Set<Watcher<T>>();
-	onChanged: Pick<
-		chrome.events.Event<(change: { newValue?: T; oldValue?: T }) => void>,
-		"addListener" | "hasListener" | "removeListener"
-	>;
-
-	constructor(key: string, entries: T, options?: Partial<KVStorageOptions>) {
-		this.storage = new Storage(key, entries, options);
-		this.defaultValue = entries;
-		this.onChanged = this.storage.onChanged;
-		this.startWatch();
+	constructor(key: string, defaultValue: T, options?: KVStorageOptions) {
+		this.#storage = new Storage(key, defaultValue, options);
 	}
 
-	protected startWatch() {
-		this.storage.onChanged.addListener((change: StorageChange<T>) => {
-			if (this.watchers.size === 0) {
-				return;
-			}
-			const newValueObject = change.newValue;
-			const oldValueObject = change.oldValue;
-			if (newValueObject === undefined || oldValueObject === undefined) {
-				return;
-			}
-
-			const diff = diffObject(newValueObject, oldValueObject);
-			for (const w of this.watchers) {
-				if (!Object.hasOwn(diff, w.key)) {
-					continue;
-				}
-
-				w.callback({
-					newValue: newValueObject[w.key],
-					oldValue: oldValueObject[w.key],
-				});
-			}
-		});
+	get(): T {
+		return this.#storage.getSync();
 	}
 
-	set<K extends keyof T>(key: K, value: T[K]): void {
-		const map = this.getAll();
-		map[key] = value;
-		this.storage.set(map);
+	getItem<K extends keyof T>(key: K): T[K] {
+		return this.get()[key];
 	}
 
-	get<K extends keyof T>(key: K): T[K] {
-		const map = this.getAll();
-		return map[key];
+	set(value: T): void {
+		this.#storage.setSync(value);
 	}
 
-	getAll(): T {
-		return this.storage.getSync();
+	setItem<K extends keyof T>(key: K, value: T[K]): void {
+		const cache = this.#storage.getSync();
+		cache[key] = value;
+		this.#storage.setSync(cache);
 	}
 
 	reset(): void {
-		this.storage.set(this.defaultValue);
+		this.#storage.reset();
 	}
 
-	watch(watcher: Watcher<T>) {
-		this.watchers.add(watcher);
+	watchItem<K extends keyof T>(
+		key: K,
+		callback: WatchCallback<T[K]>,
+	): Unwatcher {
+		const itemCb = (newValue: T, oldValue?: T) => {
+			const newItem = newValue[key];
+			const oldItem = oldValue ? oldValue[key] : undefined;
+			callback(newItem, oldItem);
+		};
+		return this.#storage.watch(itemCb);
 	}
 
-	unwatch(watcher: Watcher<T>) {
-		this.watchers.delete(watcher);
+	watch(callback: WatchCallback<T>): Unwatcher {
+		return this.#storage.watch(callback);
+	}
+
+	unwatch(id?: string | undefined): void {
+		this.#storage.unwatch(id);
 	}
 }

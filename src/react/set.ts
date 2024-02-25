@@ -1,6 +1,5 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import { type StorageChangedCallback } from "../types";
-import { type SetStorage } from "../set";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { SetStorage } from "../set";
 
 export type SetStorageHook<T> = readonly [
 	value: T[],
@@ -30,17 +29,15 @@ export function useSetStorage<T>(instance: SetStorage<T>): SetStorageHook<T> {
 		isMounted.current = true;
 		setRenderValue([...instance.values()]);
 
-		const listener: StorageChangedCallback<T[]> = (change) => {
-			if (change.newValue !== undefined) {
-				setRenderValue(change.newValue);
+		const unwatch = instance.watch((newValue) => {
+			if (isMounted.current) {
+				setRenderValue([...newValue]);
 			}
-		};
-
-		instance.onChanged.addListener(listener);
+		});
 
 		return () => {
 			isMounted.current = false;
-			instance.onChanged.removeListener(listener);
+			unwatch();
 		};
 	}, [instance]);
 
