@@ -10,70 +10,81 @@ Inspired by [@plasmohq/storage](https://github.com/PlasmoHQ/storage).
 - Key-Value
 - React Hooks
 
-## Example
-
-### Normal
+## APIs
 
 ```ts
-import { Storage } from "@okou/webext-storage";
+const storage = new Storage<T>(key: string, defaultValue: T, options?: StorageOptions);
 
-// Default value required
-const storage = new Storage("normal", 123, { area: "local" });
+const map = new MapStorage<K,V>(key: string, defaultValue: [K,V][], options?: MapStorageOptions);
 
-storage.get();
-storage.getSync();
-storage.set(456);
-storage.setSync(456);
-storage.reset();
+
+type WatchCallback<T> = (newValue: T, oldValue?: T) => void;
+type Watchable<T> = {
+	watch: (callback: WatchCallback<T>) => Unwatcher;
+	unwatch: (id?: string) => void;
+};
+
+interface Storage<T> extends Watchable<T> {
+	get: () => Promise<T>;
+	getSync: () => T;
+	set: (value: T) => Promise<void>;
+	setSync: (value: T) => void;
+	reset: () => Promise<void>;
+}
+
+interface MapStorage<K, V> extends Map<K, V>, Watchable<Map<K, V>> {
+	reset: () => void;
+}
+
+interface SetStorage<T> extends Set<T>, Watchable<Set<T>> {
+	reset: () => void;
+}
+
+interface KVStorage<T extends Record<string, unknown>> extends Watchable<T> {
+	get: () => T;
+	getItem: <K extends keyof T>(key: K) => T[K];
+	set: (value: T) => void;
+	setItem: <K extends keyof T>(key: K, value: T[K]) => void;
+	reset: () => void;
+	watchItem: <K extends keyof T>(key: K, callback: WatchCallback<T[K]>) => Unwatcher;
+}
 ```
+
+## Example
 
 ### KV
 
 ```ts
-import { KVStorage } from "../src";
-
-const kv = {
-  useFor: "config",
-  appEnable: true,
-  days: 100,
+const entries = {
+	useFor: "config",
+	appEnable: true,
+	days: 100,
 };
 
-const storage = new KVStorage("kv", kv);
-let appEnable: boolean = storage.get("appEnable");
-// @ts-expect-error
-storage.set("days", "120");
+const kvStorage = new KVStorage("kv", entries);
 
 // Listen changes by key
-storage.watch({
-  key: "appEnable",
-  callback: (c) => {
-    let b: boolean = c.newValue;
-  },
-});
+kvStorage.watchItem("appEnable", (newValue: boolean) => {});
 ```
 
 ### Hooks
 
 ```jsx
-import { useKVStorage } from "@okou/webext-storage/react";
+const instance = new SetStorage("items", [], { deepEqual: true });
 
-const kv = {
-  useFor: "config",
-  appEnable: true,
-  days: 100,
-};
-const storage = new KVStorage("kv", kv);
+function ItemList() {
+	const [items, itemSet] = useSetStorage(instance);
 
-const Component = () => {
-  const [config, setConfig] = useKVStorage(storage);
+	const cb = (item) => {
+		itemSet.delete(item);
+	};
 
-  return (
-    <Checkbox
-      isChecked={config.appEnable}
-      onChange={() => setConfig("appEnable", !config.appEnable)}
-    >
-      App enable
-    </Checkbox>
-  );
-};
+	return (
+		<li>
+			{items.map((item) => (
+				<ul onClick={cb}>{item}</ul>
+			))}
+		</li>
+	);
+}
 ```
