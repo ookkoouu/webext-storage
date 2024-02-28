@@ -84,8 +84,8 @@ export class MapStorage<K, V> implements IMapStorage<K, V> {
 				if (deepEqual(key, cacheKey)) {
 					return this.#cache.get(cacheKey);
 				}
-				return;
 			}
+			return;
 		}
 		return this.#cache.get(key);
 	}
@@ -94,10 +94,10 @@ export class MapStorage<K, V> implements IMapStorage<K, V> {
 		if (this.#options.deepEqual) {
 			for (const cacheKey of this.#cache.keys()) {
 				if (deepEqual(key, cacheKey)) {
-					return this.#cache.has(cacheKey);
+					return true;
 				}
-				return false;
 			}
+			return false;
 		}
 		return this.#cache.has(key);
 	}

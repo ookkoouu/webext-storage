@@ -60,6 +60,16 @@ export class SetStorage<T> implements ISetStorage<T> {
 	}
 
 	delete(value: T): boolean {
+		if (this.#options.deepEqual) {
+			for (const cacheValue of this.#cache) {
+				if (deepEqual(value, cacheValue)) {
+					const res = this.#cache.delete(cacheValue);
+					this.#save();
+					return res;
+				}
+			}
+			return false;
+		}
 		const res = this.#cache.delete(value);
 		this.#save();
 		return res;

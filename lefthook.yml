@@ -15,3 +15,6 @@ pre-commit:
     typecheck:
       glob: "*.{ts,tsx}"
       run: npm run typecheck
+    test:
+      glob: "*.{ts,tsx}"
+      run: npm run test

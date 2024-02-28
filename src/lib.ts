@@ -2,11 +2,15 @@ import type { Browser } from "webextension-polyfill";
 import { StorageAreaName } from "./types";
 
 declare global {
-	const chrome: Browser | undefined;
-	const browser: Browser | undefined;
+	// biome-ignore lint/style/noVar: <explanation>
+	var chrome: Browser | undefined;
+	// biome-ignore lint/style/noVar: <explanation>
+	var browser: Browser | undefined;
 }
+
 export function getExtensionStorage(area: StorageAreaName) {
-	const storage = chrome?.storage[area] ?? browser?.storage[area];
+	const _browser = globalThis.chrome ?? globalThis.browser;
+	const storage = _browser?.storage[area];
 	if (storage === undefined) {
 		throw new Error("This library must execute in browser extension context");
 	}
@@ -38,4 +42,9 @@ export function diffObject(
 
 export function clone(object: unknown) {
 	return JSON.parse(JSON.stringify(object));
+}
+
+export function isPlainObject(v: unknown): v is Record<string, unknown> {
+	if (typeof v !== "object" || v === null) return false;
+	return v.constructor === undefined || v.constructor === Object;
 }

@@ -14,7 +14,6 @@ export type StorageOptions = {
 	area: StorageAreaName;
 	sync: boolean;
 	transformer: JsonTransformer;
-	version: number;
 };
 export interface SetStorageOptions extends StorageOptions {
 	deepEqual: boolean;

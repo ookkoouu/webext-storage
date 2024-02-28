@@ -1,6 +1,5 @@
 import type { Storage as ExtStorage } from "webextension-polyfill";
 import { getExtensionStorage } from "./lib";
-import { defaultTransformer, mergeTransformer } from "./transformer";
 import type { JsonTransformer, StorageAreaName } from "./types";
 
 export type StorageDriverWatchCallback<T> = (
@@ -24,12 +23,14 @@ type DefaultDriverOptions = {
 export class DefaultDriver<T> implements StorageDriver<T> {
 	#storage: ExtStorage.StorageArea;
 	#transformer: JsonTransformer;
+
 	constructor(options?: Partial<DefaultDriverOptions>) {
 		this.#storage = getExtensionStorage(options?.area ?? "local");
-		this.#transformer = mergeTransformer(
-			defaultTransformer,
-			options?.transformer,
-		);
+		if (options?.transformer) {
+			this.#transformer = options.transformer;
+		} else {
+			this.#transformer = { replacer: (k, v) => v, reviver: (k, v) => v };
+		}
 	}
 
 	#jsonParse(value: string): T {
@@ -43,7 +44,8 @@ export class DefaultDriver<T> implements StorageDriver<T> {
 	async get(key: string): Promise<T | undefined> {
 		const raw = await this.#storage.get(key);
 		if (raw[key] === undefined && typeof raw[key] !== "string") return;
-		return this.#jsonParse(raw[key]);
+		const _ = this.#jsonParse(raw[key]);
+		return _;
 	}
 
 	async set(key: string, value: T): Promise<void> {

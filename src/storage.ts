@@ -2,7 +2,7 @@ import deepEqual from "fast-deep-equal";
 import { nanoid } from "nanoid";
 import { DefaultDriver, StorageDriver } from "./driver";
 import { mergeDefault } from "./lib";
-import { defaultTransformer, mergeTransformer } from "./transformer";
+
 import type {
 	IStorage,
 	StorageOptions,
@@ -10,11 +10,9 @@ import type {
 	WatchCallback,
 } from "./types";
 
-const defaultOptions: StorageOptions = {
+const defaultOptions: Partial<StorageOptions> = {
 	area: "local",
 	sync: true,
-	transformer: defaultTransformer,
-	version: 1,
 };
 
 export class Storage<T> implements IStorage<T> {
@@ -32,12 +30,6 @@ export class Storage<T> implements IStorage<T> {
 		this.#watchers = new Map();
 
 		this.#options = mergeDefault(defaultOptions, options);
-		if (options?.transformer !== undefined) {
-			this.#options.transformer = mergeTransformer(
-				this.#options.transformer,
-				options.transformer,
-			);
-		}
 		this.#driver = new DefaultDriver({
 			area: this.#options.area,
 			transformer: this.#options.transformer,
@@ -52,8 +44,8 @@ export class Storage<T> implements IStorage<T> {
 	}
 
 	#startSync() {
-		this.#driver.watch((_, newValue) => {
-			if (newValue !== undefined) {
+		this.#driver.watch((key, newValue) => {
+			if (key === this.key && newValue !== undefined) {
 				this.#cache = newValue;
 			}
 		});
@@ -70,12 +62,8 @@ export class Storage<T> implements IStorage<T> {
 		}
 	}
 
-	async #internalGet(): Promise<T | undefined> {
-		return await this.#driver.get(this.key);
-	}
-
 	async get(): Promise<T> {
-		const value = await this.#internalGet();
+		const value = await this.#driver.get(this.key);
 		if (value === undefined) return structuredClone(this.defaultValue);
 		this.#cache = value;
 		return value;
@@ -85,13 +73,9 @@ export class Storage<T> implements IStorage<T> {
 		return this.#cache;
 	}
 
-	async #internalSet(value: T) {
-		await this.#driver.set(this.key, value);
-	}
-
 	async set(value: T): Promise<void> {
 		this.#cache = value;
-		await this.#internalSet(value);
+		return this.#driver.set(this.key, value);
 	}
 
 	setSync(value: T): void {
@@ -101,7 +85,7 @@ export class Storage<T> implements IStorage<T> {
 
 	async reset(): Promise<void> {
 		this.#cache = this.defaultValue;
-		await this.set(this.#cache);
+		return this.set(this.#cache);
 	}
 
 	watch(callback: WatchCallback<T>): Unwatcher {
