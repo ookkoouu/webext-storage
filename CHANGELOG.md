@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.3](https://github.com/ookkoouu/webext-storage/compare/v2.0.2...v2.0.3) (2024-02-28)
+
+
+### Bug Fixes
+
+* fix storage default value ([453e126](https://github.com/ookkoouu/webext-storage/commit/453e126a89ceafabbf6da8661010ef2d380d35b3))
+
 ## [2.0.2](https://github.com/ookkoouu/webext-storage/compare/v2.0.1...v2.0.2) (2024-02-25)
 
 
