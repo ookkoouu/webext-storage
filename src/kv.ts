@@ -1,3 +1,4 @@
+import deepEqual from "fast-deep-equal";
 import { Storage } from "./storage";
 import type {
 	IKVStorage,
@@ -49,6 +50,7 @@ export class KVStorage<T extends Record<string, unknown>>
 		const itemCb = (newValue: T, oldValue?: T) => {
 			const newItem = newValue[key];
 			const oldItem = oldValue ? oldValue[key] : undefined;
+			if (deepEqual(newItem, oldItem)) return;
 			callback(newItem, oldItem);
 		};
 		return this.#storage.watch(itemCb);
