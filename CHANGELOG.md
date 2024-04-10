@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.4](https://github.com/ookkoouu/webext-storage/compare/v2.0.3...v2.0.4) (2024-04-10)
+
+
+### Bug Fixes
+
+* prevent unnessesary callback of KVStorage ([b51ce03](https://github.com/ookkoouu/webext-storage/commit/b51ce035c98d4e8f2cb30ff5a7dfdbce6ad20faf))
+
 ## [2.0.3](https://github.com/ookkoouu/webext-storage/compare/v2.0.2...v2.0.3) (2024-02-28)
 
 
