@@ -1,4 +1,5 @@
 import type { Storage as ExtStorage } from "webextension-polyfill";
+import { StorageDriver } from "./driver";
 
 export type StorageAreaName = keyof Pick<
 	ExtStorage.Static,
@@ -12,6 +13,7 @@ export type JsonTransformer = {
 
 export type StorageOptions = {
 	area: StorageAreaName;
+	driver: StorageDriver;
 	sync: boolean;
 	transformer: JsonTransformer;
 };

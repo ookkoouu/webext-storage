@@ -19,7 +19,7 @@ export class Storage<T> implements IStorage<T> {
 	readonly key: string;
 	readonly defaultValue: T;
 	#cache: T;
-	#driver: StorageDriver<T>;
+	#driver: StorageDriver;
 	#options = defaultOptions;
 	#watchers: Map<string, WatchCallback<T>>;
 
@@ -30,12 +30,14 @@ export class Storage<T> implements IStorage<T> {
 		this.#watchers = new Map();
 
 		this.#options = mergeDefault(defaultOptions, options);
-		this.#driver = new DefaultDriver({
-			area: this.#options.area,
-			transformer: this.#options.transformer,
-		});
+		this.#driver =
+			options?.driver ??
+			new DefaultDriver({
+				area: this.#options.area,
+				transformer: this.#options.transformer,
+			});
 
-		this.#driver.watch((key, nv, ov) => this.#changedPublisher(key, nv, ov));
+		this.#driver.watch<T>((key, nv, ov) => this.#changedPublisher(key, nv, ov));
 		if (this.#options.sync) {
 			this.#startSync();
 		}
@@ -44,7 +46,7 @@ export class Storage<T> implements IStorage<T> {
 	}
 
 	#startSync() {
-		this.#driver.watch((key, newValue) => {
+		this.#driver.watch<T>((key, newValue) => {
 			if (key === this.key && newValue !== undefined) {
 				this.#cache = newValue;
 			}
@@ -63,7 +65,7 @@ export class Storage<T> implements IStorage<T> {
 	}
 
 	async get(): Promise<T> {
-		const value = await this.#driver.get(this.key);
+		const value = await this.#driver.get<T>(this.key);
 		if (value === undefined) return structuredClone(this.defaultValue);
 		this.#cache = value;
 		return value;

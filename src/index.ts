@@ -13,3 +13,4 @@ export { Storage } from "./storage";
 export { MapStorage } from "./map";
 export { SetStorage } from "./set";
 export { KVStorage } from "./kv";
+export { DefaultDriver, StorageDriver } from "./driver";

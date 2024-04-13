@@ -7,25 +7,33 @@ export type StorageDriverWatchCallback<T> = (
 	newValue?: T,
 	oldValue?: T,
 ) => void;
-export type StorageDriver<T> = {
-	get: (key: string) => Promise<T | undefined>;
-	set: (key: string, value: T) => Promise<void>;
-	watch: (callback: StorageDriverWatchCallback<T>) => () => void;
+export type StorageDriver = {
+	get: <T>(key: string) => Promise<T | undefined>;
+	set: <T>(key: string, value: T) => Promise<void>;
+	watch: <T>(callback: StorageDriverWatchCallback<T>) => () => void;
 };
 
 type StorageAreaChanges = ExtStorage.StorageAreaOnChangedChangesType;
 type StorageAreaChangedCallback = (changes: StorageAreaChanges) => void;
 type DefaultDriverOptions = {
 	area: StorageAreaName;
+	copyLocal: boolean;
+	namespace: string;
 	transformer: JsonTransformer;
 };
 
-export class DefaultDriver<T> implements StorageDriver<T> {
+const defaultNamespace = "webextstorage_";
+
+export class DefaultDriver implements StorageDriver {
 	#storage: ExtStorage.StorageArea;
+	#isCopy: boolean;
+	#namespace: string;
 	#transformer: JsonTransformer;
 
 	constructor(options?: Partial<DefaultDriverOptions>) {
 		this.#storage = getExtensionStorage(options?.area ?? "local");
+		this.#isCopy = options?.copyLocal ?? false;
+		this.#namespace = options?.namespace || defaultNamespace;
 		if (options?.transformer) {
 			this.#transformer = options.transformer;
 		} else {
@@ -33,7 +41,7 @@ export class DefaultDriver<T> implements StorageDriver<T> {
 		}
 	}
 
-	#jsonParse(value: string): T {
+	#jsonParse<T>(value: string): T {
 		return JSON.parse(value, this.#transformer.reviver);
 	}
 
@@ -41,18 +49,26 @@ export class DefaultDriver<T> implements StorageDriver<T> {
 		return JSON.stringify(value, this.#transformer.replacer);
 	}
 
-	async get(key: string): Promise<T | undefined> {
+	#copyLocalstorage<T>(key: string, value: T) {
+		if (window?.origin == null || !window.origin.startsWith("https://")) return;
+		window.localStorage.setItem(this.#namespace + key, JSON.stringify(value));
+	}
+
+	async get<T>(key: string): Promise<T | undefined> {
 		const raw = await this.#storage.get(key);
 		if (raw[key] === undefined && typeof raw[key] !== "string") return;
-		const _ = this.#jsonParse(raw[key]);
-		return _;
+		const val = this.#jsonParse<T>(raw[key]);
+		return val;
 	}
 
-	async set(key: string, value: T): Promise<void> {
+	async set<T>(key: string, value: T): Promise<void> {
 		await this.#storage.set({ [key]: this.#jsonStringify(value) });
+		if (this.#isCopy) {
+			this.#copyLocalstorage(key, value);
+		}
 	}
 
-	watch(callback: StorageDriverWatchCallback<T>): () => void {
+	watch<T>(callback: StorageDriverWatchCallback<T>): () => void {
 		const _cb: StorageAreaChangedCallback = (change) => {
 			for (const [k, v] of Object.entries(change)) {
 				const newValue =
