@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/ookkoouu/webext-storage/compare/v2.0.4...v2.1.0) (2024-04-13)
+
+
+### Features
+
+* add driver option ([9d40750](https://github.com/ookkoouu/webext-storage/commit/9d407502c88cd5bd1e5c4a45cba6fbd40954ca0a))
+* add localstorage driver ([e99281c](https://github.com/ookkoouu/webext-storage/commit/e99281cf263a4b88e58b8d573373ee066d40a8d9))
+
 ## [2.0.4](https://github.com/ookkoouu/webext-storage/compare/v2.0.3...v2.0.4) (2024-04-10)
 
 
