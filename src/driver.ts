@@ -86,3 +86,67 @@ export class DefaultDriver implements StorageDriver {
 		return () => this.#storage.onChanged.removeListener(_cb);
 	}
 }
+
+type LocalstorageDriverOptions = {
+	namespace: string;
+	transformer: JsonTransformer;
+};
+
+export class LocalstorageDriver implements StorageDriver {
+	#namespace: string;
+	#storage: Storage;
+	#transformer: JsonTransformer;
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	#watchers: Set<StorageDriverWatchCallback<any>> = new Set();
+
+	constructor(opts?: Partial<LocalstorageDriverOptions>) {
+		this.#namespace = opts?.namespace || defaultNamespace;
+		if (window?.localStorage == null) {
+			throw new Error("localStorage is undefined");
+		}
+		this.#storage = window.localStorage;
+		this.#transformer = opts?.transformer ?? {
+			replacer: (_, v) => v,
+			reviver: (_, v) => v,
+		};
+
+		window.addEventListener("storage", (e) => {
+			if (e.key == null || !e.key.startsWith(this.#namespace)) return;
+			// biome-ignore lint/complexity/noForEach: <explanation>
+			this.#watchers.forEach((cb) => {
+				cb(this.#unwrapKey(e.key as string), e.newValue, e.oldValue);
+			});
+		});
+	}
+
+	#wrapKey(key: string) {
+		return this.#namespace + key;
+	}
+	#unwrapKey(key: string) {
+		if (!key.startsWith(this.#namespace)) return key;
+		return key.replace(new RegExp(`^${this.#namespace}`), "");
+	}
+
+	async get<T>(key: string): Promise<T | undefined> {
+		const val = this.#storage.getItem(this.#wrapKey(key));
+		if (val == null) return undefined;
+		return JSON.parse(val, this.#transformer.reviver) as T;
+	}
+
+	async set<T>(key: string, value: T): Promise<void> {
+		const oldValue = await this.get(key);
+		this.#storage.setItem(
+			this.#wrapKey(key),
+			JSON.stringify(value, this.#transformer.replacer),
+		);
+		// biome-ignore lint/complexity/noForEach: <explanation>
+		this.#watchers.forEach((cb) => {
+			cb(key, value, oldValue);
+		});
+	}
+
+	watch<T>(callback: StorageDriverWatchCallback<T>): () => void {
+		this.#watchers.add(callback);
+		return () => this.#watchers.delete(callback);
+	}
+}
