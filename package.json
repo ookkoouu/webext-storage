@@ -37,34 +37,25 @@
 			"types": "./dist/react/index.d.ts"
 		}
 	},
-	"files": [
-		"dist"
-	],
-	"keywords": [
-		"webext",
-		"browser-extension",
-		"chrome",
-		"storage",
-		"hooks"
-	],
+	"files": ["dist"],
+	"keywords": ["webext", "browser-extension", "chrome", "storage", "hooks"],
 	"repository": "github:ookkoouu/webext-storage",
 	"devDependencies": {
-		"@biomejs/biome": "^1.5.3",
-		"@types/react": "^18.2.60",
+		"@biomejs/biome": "^1.7.0",
+		"@types/react": "^18.2.79",
 		"@types/webextension-polyfill": "^0.10.7",
 		"@webext-core/fake-browser": "^1.3.1",
 		"commitizen": "^4.3.0",
-		"lefthook": "^1.6.4",
+		"lefthook": "^1.6.10",
 		"npm-run-all2": "^6.1.2",
 		"prettier": "^3.2.5",
 		"tsup": "^8.0.2",
-		"typescript": "^5.3.3",
-		"vitest": "^1.3.1",
-		"webextension-polyfill": "^0.10.0"
+		"typescript": "^5.4.5",
+		"vitest": "^1.5.0"
 	},
 	"dependencies": {
-		"fast-deep-equal": "^3.1.3",
-		"nanoid": "^5.0.6",
-		"react": "^18.2.0"
+		"@okou/unstorage-map-set-kv": "^1.1.0",
+		"react": "^18.2.0",
+		"unstorage": "^1.10.2"
 	}
 }
