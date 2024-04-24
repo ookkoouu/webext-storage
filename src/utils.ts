@@ -44,7 +44,8 @@ export function defineDriver<T>(factory: DriverFactory<T>): DriverFactory<T> {
 }
 
 /**
- * @link
+ * @license MIT License, Copyright (c) Pooya Parsa <pooya@pi0.io>
+ * @link https://github.com/unjs/destr/blob/d93ca4a27ddf24d906e215c5d584d22001595bc3/src/index.ts
  */
 // https://github.com/fastify/secure-json-parse
 // https://github.com/hapijs/bourne
