@@ -1,131 +1,108 @@
-import deepEqual from "fast-deep-equal";
-import { mergeDefault } from "./lib";
-import { Storage } from "./storage";
+import equal from "fast-deep-equal";
+import { webext } from "./driver";
 import type {
-	ISetStorage,
-	SetStorageOptions,
-	StorageOptions,
-	Unwatcher,
+	Driver,
+	StorageAreaName,
+	StorageValue,
+	Unwatch,
 	WatchCallback,
 } from "./types";
+import { parse, stringify } from "./utils";
 
-type Options = Omit<SetStorageOptions, keyof StorageOptions>;
+export interface SetStorage<T extends StorageValue> {
+	add: (value: T) => Promise<T[]>;
+	clear: () => Promise<void>;
+	delete: (value: T) => Promise<boolean>;
+	entries: () => Promise<[T, T][]>;
+	forEach: (callback: (value: T, value2: T, set: T[]) => unknown) => void;
+	has: (value: T) => Promise<boolean>;
+	keys: () => Promise<T[]>;
+	values: () => Promise<T[]>;
+	watch: (callback: WatchCallback<T[]>) => Unwatch;
+}
 
-const defaultOptions: Options = {
-	deepEqual: false,
-};
+export interface CreateSetStorageOptions {
+	area?: StorageAreaName;
+	driver?: Driver;
+}
 
-export class SetStorage<T> implements ISetStorage<T> {
-	#storage: Storage<T[]>;
-	#options: Options;
-	defaultValue: T[];
-	#cache: Set<T>;
+export function createSetStorage<T extends StorageValue>(
+	key: string,
+	opts: CreateSetStorageOptions = {},
+): SetStorage<T> {
+	const _key = key;
+	const _area = opts.area ?? "local";
+	const _driver = opts.driver ?? webext({ area: _area });
 
-	constructor(
-		key: string,
-		defaultValue: T[],
-		options?: Partial<SetStorageOptions>,
-	) {
-		const _options = mergeDefault<Partial<SetStorageOptions>>(
-			defaultOptions,
-			options,
-		);
-		this.#storage = new Storage(key, defaultValue, _options);
-		this.#options = { deepEqual: _options.deepEqual ?? false };
-		this.defaultValue = defaultValue;
-		this.#cache = new Set(defaultValue);
-		this.#storage.get().then((value) => {
-			this.#cache = new Set(value);
-		});
-	}
-
-	#save() {
-		this.#storage.set([...this.#cache]);
-	}
-
-	reset() {
-		this.#cache = new Set(this.defaultValue);
-		this.#storage.reset();
-	}
-
-	add(value: T): this {
-		this.#cache.add(value);
-		this.#save();
-		return this;
-	}
-
-	clear(): void {
-		this.#cache.clear();
-		this.#save();
-	}
-
-	delete(value: T): boolean {
-		if (this.#options.deepEqual) {
-			for (const cacheValue of this.#cache) {
-				if (deepEqual(value, cacheValue)) {
-					const res = this.#cache.delete(cacheValue);
-					this.#save();
-					return res;
-				}
-			}
-			return false;
+	const _get = async () => {
+		const raw = await _driver.getItem(_key);
+		if (typeof raw !== "string") {
+			return [] as T[];
 		}
-		const res = this.#cache.delete(value);
-		this.#save();
-		return res;
-	}
 
-	forEach(
-		callbackfn: (value: T, value2: T, set: Set<T>) => void,
-		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-		thisArg?: any,
-	): void {
-		this.#cache.forEach(callbackfn, thisArg);
-	}
-
-	has(value: T): boolean {
-		if (this.#options.deepEqual) {
-			for (const cacheValue of this.#cache) {
-				if (deepEqual(value, cacheValue)) {
-					return true;
-				}
-			}
-			return false;
+		const val = parse<T>(raw);
+		if (!Array.isArray(val)) {
+			return [] as T[];
 		}
-		const res = this.#cache.has(value);
-		this.#save();
-		return res;
-	}
+		return val as T[];
+	};
 
-	get size() {
-		return this.#cache.size;
-	}
+	const _set = async (value: T[]) => {
+		await _driver.setItem?.(_key, stringify(value), {});
+	};
 
-	entries(): IterableIterator<[T, T]> {
-		return this.#cache.entries();
-	}
+	return {
+		async add(value) {
+			const val = await _get();
+			const added = val.filter((e) => !equal(e, value));
+			added.push(value);
+			await _set(added);
+			return added;
+		},
 
-	keys(): IterableIterator<T> {
-		return this.#cache.keys();
-	}
+		async clear() {
+			await _set([]);
+		},
 
-	values(): IterableIterator<T> {
-		return this.#cache.values();
-	}
+		async delete(value) {
+			const val = await _get();
+			const removed = val.filter((e) => !equal(e, value));
+			await _set(removed);
+			return val.length !== removed.length;
+		},
 
-	[Symbol.iterator](): IterableIterator<T> {
-		return this.#cache.values();
-	}
+		async entries() {
+			const val = await _get();
+			return val.map((e) => [e, e]);
+		},
 
-	[Symbol.toStringTag] = "SetStorage";
+		async forEach(callback) {
+			const val = await _get();
+			for (const e of val) {
+				await callback(e, e, val);
+			}
+		},
 
-	watch(callback: WatchCallback<Set<T>>): Unwatcher {
-		return this.#storage.watch((newValue, oldValue) => {
-			callback(new Set(newValue), oldValue ? new Set(oldValue) : undefined);
-		});
-	}
+		async has(value) {
+			const val = await _get();
+			return val.some((e) => equal(e, value));
+		},
 
-	unwatch(id?: string | undefined): void {
-		this.#storage.unwatch(id);
-	}
+		async keys() {
+			return await _get();
+		},
+
+		async values() {
+			return await _get();
+		},
+
+		watch(callback) {
+			if (_driver.watch === undefined) {
+				return () => undefined;
+			}
+			return _driver.watch(async () => {
+				callback(await _get());
+			});
+		},
+	};
 }

@@ -1,66 +1,101 @@
-import deepEqual from "fast-deep-equal";
-import { Storage } from "./storage";
+import equal from "fast-deep-equal";
+import { webext } from "./driver";
 import type {
-	IKVStorage,
-	KVStorageOptions,
-	Unwatcher,
+	Driver,
+	StorageAreaName,
+	StorageValue,
+	Unwatch,
 	WatchCallback,
 } from "./types";
+import { parse, stringify } from "./utils";
 
-export class KVStorage<T extends Record<string, unknown>>
-	implements IKVStorage<T>
-{
-	#storage: Storage<T>;
+export type KVEntries = { [P in string]: StorageValue };
 
-	constructor(
-		key: string,
-		defaultValue: T,
-		options?: Partial<KVStorageOptions>,
-	) {
-		this.#storage = new Storage(key, defaultValue, options);
-		this.#storage.get();
-	}
-
-	get(): T {
-		return this.#storage.getSync();
-	}
-
-	getItem<K extends keyof T>(key: K): T[K] {
-		return this.get()[key];
-	}
-
-	set(value: T): void {
-		this.#storage.set(value);
-	}
-
-	setItem<K extends keyof T>(key: K, value: T[K]): void {
-		const cache = this.#storage.getSync();
-		cache[key] = value;
-		this.#storage.set(cache);
-	}
-
-	reset(): void {
-		this.#storage.reset();
-	}
-
-	watchItem<K extends keyof T>(
+export interface KVStorage<T extends KVEntries> {
+	readonly init: T;
+	get: () => Promise<T>;
+	getItem: <K extends keyof T>(key: K) => Promise<T[K]>;
+	reset: () => Promise<void>;
+	set: (value: T) => Promise<void>;
+	setItem: <K extends keyof T>(key: K, value: T[K]) => Promise<void>;
+	watch: (callback: WatchCallback<T>) => Unwatch;
+	watchItem: <K extends keyof T>(
 		key: K,
 		callback: WatchCallback<T[K]>,
-	): Unwatcher {
-		const itemCb = (newValue: T, oldValue?: T) => {
-			const newItem = newValue[key];
-			const oldItem = oldValue ? oldValue[key] : undefined;
-			if (deepEqual(newItem, oldItem)) return;
-			callback(newItem, oldItem);
-		};
-		return this.#storage.watch(itemCb);
-	}
+	) => Unwatch;
+}
 
-	watch(callback: WatchCallback<T>): Unwatcher {
-		return this.#storage.watch(callback);
-	}
+export interface CreateKVStorageOptions<T> {
+	area?: StorageAreaName;
+	driver?: Driver;
+	init: T;
+}
 
-	unwatch(id?: string | undefined): void {
-		this.#storage.unwatch(id);
-	}
+export function createKVStorage<T extends KVEntries>(
+	key: string,
+	opts: CreateKVStorageOptions<T>,
+): KVStorage<T> {
+	const _key = key;
+	const _area = opts.area ?? "local";
+	const _driver = opts.driver ?? webext({ area: _area });
+	const _init = structuredClone(opts.init);
+	let _prevValue = {} as T;
+
+	return {
+		async get() {
+			const raw = await _driver.getItem(_key);
+			if (typeof raw !== "string") {
+				return structuredClone(_init);
+			}
+			const val = parse<T>(raw);
+			return val;
+		},
+
+		async getItem(key) {
+			const val = await this.get();
+			return val[key];
+		},
+
+		get init() {
+			return structuredClone(_init);
+		},
+
+		async reset() {
+			await this.set(_init);
+		},
+
+		async set(value) {
+			if (_driver.setItem === undefined) return;
+			await _driver.setItem(_key, stringify(value), {});
+		},
+
+		async setItem(key, value) {
+			const val = await this.get();
+			val[key] = value;
+			await this.set(val);
+		},
+
+		watch(callback) {
+			this.get().then((v) => {
+				_prevValue = v;
+			});
+			return _driver.watch(async () => {
+				const val = await this.get();
+				callback(val);
+				_prevValue = val;
+			});
+		},
+
+		watchItem(key, callback) {
+			return this.watch((newValue) => {
+				if (newValue == null) {
+					callback(_init[key]);
+					return;
+				}
+				if (!equal(_prevValue[key], newValue[key])) {
+					callback(newValue[key]);
+				}
+			});
+		},
+	};
 }

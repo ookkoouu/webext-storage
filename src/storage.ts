@@ -1,110 +1,51 @@
-import deepEqual from "fast-deep-equal";
-import { nanoid } from "nanoid";
-import { DefaultDriver, StorageDriver } from "./driver";
-import { mergeDefault } from "./lib";
-
+import { webext } from "./driver";
 import type {
-	IStorage,
-	StorageOptions,
-	Unwatcher,
+	Driver,
+	StorageAreaName,
+	StorageValue,
+	Unwatch,
 	WatchCallback,
 } from "./types";
+import { parse, stringify } from "./utils";
 
-const defaultOptions: Partial<StorageOptions> = {
-	area: "local",
-	sync: true,
-};
+export interface Storage<T extends StorageValue> {
+	get: () => Promise<T | undefined>;
+	set: (value: T) => Promise<void>;
+	watch: (callback: WatchCallback<T>) => Unwatch;
+}
 
-export class Storage<T> implements IStorage<T> {
-	readonly key: string;
-	readonly defaultValue: T;
-	#cache: T;
-	#driver: StorageDriver;
-	#options = defaultOptions;
-	#watchers: Map<string, WatchCallback<T>>;
+export interface CreateStorageOptions {
+	area?: StorageAreaName;
+	driver?: Driver;
+}
 
-	constructor(key: string, defaultValue: T, options?: Partial<StorageOptions>) {
-		this.key = key;
-		this.defaultValue = defaultValue;
-		this.#cache = defaultValue;
-		this.#watchers = new Map();
+export function createStorage<T extends StorageValue>(
+	key: string,
+	opts: CreateStorageOptions = {},
+): Storage<T> {
+	const _key = key;
+	const _area = opts.area ?? "local";
+	const _driver = opts.driver ?? webext({ area: _area });
 
-		this.#options = mergeDefault(defaultOptions, options);
-		this.#driver =
-			options?.driver ??
-			new DefaultDriver({
-				area: this.#options.area,
-				transformer: this.#options.transformer,
-			});
+	return {
+		async get() {
+			const raw = await _driver.getItem(_key);
+			if (typeof raw !== "string") return;
+			return parse<T>(raw);
+		},
 
-		this.#driver.watch<T>((key, nv, ov) => this.#changedPublisher(key, nv, ov));
-		if (this.#options.sync) {
-			this.#startSync();
-		}
-		// restore cache
-		this.get();
-	}
+		async set(value) {
+			if (_driver.setItem === undefined) return;
+			await _driver.setItem(_key, stringify(value), {});
+		},
 
-	#startSync() {
-		this.#driver.watch<T>((key, newValue) => {
-			if (key === this.key && newValue !== undefined) {
-				this.#cache = newValue;
+		watch(callback) {
+			if (_driver.watch === undefined) {
+				return () => undefined;
 			}
-		});
-	}
-
-	#changedPublisher(key: string, newValue?: T, oldValue?: T) {
-		if (key !== this.key) return;
-		if (newValue === undefined) {
-			return;
-		}
-		if (deepEqual(newValue, oldValue)) return;
-		for (const [, watcher] of this.#watchers) {
-			watcher(newValue, oldValue);
-		}
-	}
-
-	async get(): Promise<T> {
-		const value = await this.#driver.get<T>(this.key);
-		if (value === undefined) return structuredClone(this.defaultValue);
-		this.#cache = value;
-		return value;
-	}
-
-	getSync(): T {
-		return this.#cache;
-	}
-
-	async set(value: T): Promise<void> {
-		this.#cache = value;
-		return this.#driver.set(this.key, value);
-	}
-
-	setSync(value: T): void {
-		this.#cache = value;
-		this.set(this.#cache);
-	}
-
-	async reset(): Promise<void> {
-		this.#cache = this.defaultValue;
-		return this.set(this.#cache);
-	}
-
-	watch(callback: WatchCallback<T>): Unwatcher {
-		const id = nanoid(12);
-		this.#watchers.set(id, callback);
-		const unwatcher = () => {
-			this.#watchers.delete(id);
-		};
-		unwatcher.id = id;
-		return unwatcher as Unwatcher;
-	}
-
-	unwatch(id?: string): void {
-		if (id !== undefined) {
-			this.#watchers.delete(id);
-		} else {
-			this.#watchers.clear();
-		}
-	}
+			return _driver.watch(async () => {
+				callback(await this.get());
+			});
+		},
+	};
 }

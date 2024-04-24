@@ -1,71 +1,76 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { KVStorage } from "../kv";
+import { useCallback, useEffect, useState } from "react";
+import type { KVEntries, KVStorage } from "../kv";
+import type { StorageValue } from "../types";
 
-export type KVStorageHook<T> = readonly [
-	T,
-	{
-		set(value: T): void;
-		setItem<K extends keyof T>(key: K, value: T[K]): void;
-		reset(): void;
+export type KVStorageHook<T extends KVEntries> = readonly [
+	value: T,
+	kv: {
+		set(value: T): Promise<void>;
+		setItem<K extends keyof T>(key: K, value: T[K]): Promise<void>;
+		reset(): Promise<void>;
 	},
 ];
 
-export const useKVStorage = <T extends Record<string, unknown>>(
-	instance: KVStorage<T>,
+export type KVStorageItemHook<T extends StorageValue> = readonly [
+	item: T,
+	setItem: (value: T) => Promise<void>,
+];
+
+export const useKVStorage = <T extends KVEntries>(
+	storage: KVStorage<T>,
 ): KVStorageHook<T> => {
-	const isMounted = useRef(false);
+	const [renderValue, setRenderValue] = useState(storage.init);
 
-	const [renderValue, setRenderValue] = useState(instance.get());
-
-	const set = useCallback((value: T) => instance.set(value), [instance]);
+	const set = useCallback((value: T) => storage.set(value), [storage]);
 	const setItem = useCallback(
-		<K extends keyof T>(key: K, value: T[K]) => instance.setItem(key, value),
-		[instance],
+		<K extends keyof T>(key: K, value: T[K]) => storage.setItem(key, value),
+		[storage],
 	);
-	const reset = useCallback(() => instance.reset(), [instance]);
+	const reset = useCallback(() => storage.reset(), [storage]);
 
 	useEffect(() => {
-		isMounted.current = true;
-		setRenderValue(instance.get());
+		(async () => {
+			setRenderValue(await storage.get());
+		})();
 
-		const unwatch = instance.watch((newValue) => {
-			if (isMounted.current) {
-				setRenderValue(newValue);
-			}
+		const unwatch = storage.watch((newValue) => {
+			if (newValue === undefined) return;
+			setRenderValue(newValue);
 		});
+
 		return () => {
-			isMounted.current = false;
 			unwatch();
 		};
-	}, [instance]);
+	}, [storage]);
 
 	return [renderValue, { set, setItem, reset }] as const;
 };
 
-export type KVStorageItemHook<T> = readonly [T, (value: T) => void];
-
-export const useKVStorageItem = <
-	T extends Record<string, unknown>,
-	K extends keyof T,
->(
-	instance: KVStorage<T>,
+export const useKVStorageItem = <T extends KVEntries, K extends keyof T>(
+	storage: KVStorage<T>,
 	key: K,
 ) => {
-	const [renderValue, setRenderValue] = useState(instance.getItem(key));
+	const [renderValue, setRenderValue] = useState(storage.init[key]);
 
 	const setItem = useCallback(
-		(value: T[K]) => instance.setItem(key, value),
-		[instance, key],
+		(value: T[K]) => storage.setItem(key, value),
+		[storage, key],
 	);
 
 	useEffect(() => {
-		const unwatch = instance.watchItem(key, (newValue) => {
+		(async () => {
+			setRenderValue(await storage.getItem(key));
+		})();
+
+		const unwatch = storage.watchItem(key, (newValue) => {
+			if (newValue === undefined) return;
 			setRenderValue(newValue);
 		});
+
 		return () => {
 			unwatch();
 		};
-	}, [instance, key]);
+	}, [storage, key]);
 
 	return [renderValue, setItem] as const;
 };

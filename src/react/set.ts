@@ -1,47 +1,41 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { SetStorage } from "../set";
+import type { StorageValue } from "../types";
 
 export type SetStorageHook<T> = readonly [
 	value: T[],
-	storage: {
-		add(value: T): void;
-		clear(): void;
-		delete(value: T): boolean;
-		has(value: T): boolean;
-		entries(): IterableIterator<[T, T]>;
-		values(): IterableIterator<T>;
-		reset(): void;
+	set: {
+		add(value: T): Promise<T[]>;
+		clear(): Promise<void>;
+		delete(value: T): Promise<boolean>;
+		has(value: T): Promise<boolean>;
 	},
 ];
 
-export function useSetStorage<T>(instance: SetStorage<T>): SetStorageHook<T> {
-	const isMounted = useRef(false);
+export function useSetStorage<T extends StorageValue>(
+	storage: SetStorage<T>,
+): SetStorageHook<T> {
+	const [renderValue, setRenderValue] = useState<T[]>([]);
 
-	const [renderValue, setRenderValue] = useState<T[]>(instance.defaultValue);
-
-	const add = useCallback((value: T) => instance.add(value), [instance]);
-	const clear = useCallback(() => instance.clear(), [instance]);
-	const _delete = useCallback((value: T) => instance.delete(value), [instance]);
-	const has = useCallback((value: T) => instance.has(value), [instance]);
-	const entries = useCallback(() => instance.entries(), [instance]);
-	const values = useCallback(() => instance.values(), [instance]);
-	const reset = useCallback(() => instance.reset(), [instance]);
+	const add = useCallback((value: T) => storage.add(value), [storage]);
+	const clear = useCallback(() => storage.clear(), [storage]);
+	const _delete = useCallback((value: T) => storage.delete(value), [storage]);
+	const has = useCallback((value: T) => storage.has(value), [storage]);
 
 	useEffect(() => {
-		isMounted.current = true;
-		setRenderValue([...instance.values()]);
+		(async () => {
+			setRenderValue(await storage.values());
+		})();
 
-		const unwatch = instance.watch((newValue) => {
-			if (isMounted.current) {
-				setRenderValue([...newValue]);
-			}
+		const unwatch = storage.watch((newValue) => {
+			if (newValue === undefined) return;
+			setRenderValue(newValue);
 		});
 
 		return () => {
-			isMounted.current = false;
 			unwatch();
 		};
-	}, [instance]);
+	}, [storage]);
 
 	return [
 		renderValue,
@@ -50,9 +44,6 @@ export function useSetStorage<T>(instance: SetStorage<T>): SetStorageHook<T> {
 			clear,
 			delete: _delete,
 			has,
-			entries,
-			values,
-			reset,
 		},
 	] as const;
 }

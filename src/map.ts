@@ -1,142 +1,112 @@
-import deepEqual from "fast-deep-equal";
-import { mergeDefault } from "./lib";
-import { Storage } from "./storage";
+import equal from "fast-deep-equal";
+import { webext } from "./driver";
 import type {
-	IMapStorage,
-	MapStorageOptions,
-	StorageOptions,
-	Unwatcher,
+	Driver,
+	StorageAreaName,
+	StorageValue,
+	Unwatch,
 	WatchCallback,
 } from "./types";
+import { parse, stringify } from "./utils";
 
-type Options = Omit<MapStorageOptions, keyof StorageOptions>;
+export interface MapStorage<K extends StorageValue, V extends StorageValue> {
+	clear: () => Promise<void>;
+	delete: (key: K) => Promise<boolean>;
+	entries: () => Promise<[K, V][]>;
+	forEach: (callback: (value: V, key: K, map: [K, V][]) => unknown) => void;
+	get: (key: K) => Promise<V | undefined>;
+	has: (key: K) => Promise<boolean>;
+	keys: () => Promise<K[]>;
+	set: (key: K, value: V) => Promise<void>;
+	values: () => Promise<V[]>;
+	watch: (callback: WatchCallback<[K, V][]>) => Unwatch;
+}
 
-const defaultOptions: Options = {
-	deepEqual: false,
-};
+export interface CreateMapStorageOptions {
+	area?: StorageAreaName;
+	driver?: Driver;
+}
 
-export class MapStorage<K, V> implements IMapStorage<K, V> {
-	#storage: Storage<[K, V][]>;
-	#options: Options;
-	defaultValue: [K, V][];
-	#cache: Map<K, V>;
+export function createMapStorage<
+	K extends StorageValue,
+	V extends StorageValue,
+>(key: string, opts: CreateMapStorageOptions = {}): MapStorage<K, V> {
+	const _key = key;
+	const _area = opts.area ?? "local";
+	const _driver = opts.driver ?? webext({ area: _area });
 
-	constructor(
-		key: string,
-		defaultValue: [K, V][],
-		options?: Partial<MapStorageOptions>,
-	) {
-		const _options = mergeDefault<Partial<MapStorageOptions>>(
-			defaultOptions,
-			options,
-		);
-		this.#storage = new Storage(key, defaultValue, _options);
-		this.#options = { deepEqual: _options.deepEqual ?? false };
-		this.defaultValue = defaultValue;
-		this.#cache = new Map(defaultValue);
-		this.#storage.get().then((value) => {
-			this.#cache = new Map(value);
-		});
-	}
-
-	#save() {
-		this.#storage.set([...this.#cache]);
-	}
-
-	reset(): void {
-		this.#cache = new Map(this.defaultValue);
-		this.#storage.reset();
-		this.#save();
-	}
-
-	clear(): void {
-		this.#cache.clear();
-		this.#save();
-	}
-
-	delete(key: K): boolean {
-		if (this.#options.deepEqual) {
-			for (const cacheKey of this.#cache.keys()) {
-				if (deepEqual(key, cacheKey)) {
-					const res = this.#cache.delete(cacheKey);
-					this.#save();
-					return res;
-				}
-				return false;
-			}
+	const _get = async () => {
+		const raw = await _driver.getItem(_key);
+		if (typeof raw !== "string") {
+			return [] as [K, V][];
 		}
-		const res = this.#cache.delete(key);
-		this.#save();
-		return res;
-	}
 
-	forEach(
-		callbackfn: (value: V, key: K, map: Map<K, V>) => void,
-		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-		thisArg?: any,
-	): void {
-		this.#cache.forEach(callbackfn, thisArg);
-	}
-
-	get(key: K): V | undefined {
-		if (this.#options.deepEqual) {
-			for (const cacheKey of this.#cache.keys()) {
-				if (deepEqual(key, cacheKey)) {
-					return this.#cache.get(cacheKey);
-				}
-			}
-			return;
+		const val = parse<[K, V][]>(raw);
+		if (Array.isArray(val)) {
+			return val as [K, V][];
 		}
-		return this.#cache.get(key);
-	}
+		return [] as [K, V][];
+	};
 
-	has(key: K): boolean {
-		if (this.#options.deepEqual) {
-			for (const cacheKey of this.#cache.keys()) {
-				if (deepEqual(key, cacheKey)) {
-					return true;
-				}
+	const _set = async (value: [K, V][]) => {
+		await _driver.setItem?.(_key, stringify(value), {});
+	};
+
+	return {
+		async clear() {
+			await _set([]);
+		},
+
+		async delete(key) {
+			const val = await _get();
+			const removed = val.filter(([k]) => !equal(k, key));
+			await _set(removed);
+			return val.length !== removed.length;
+		},
+
+		async entries() {
+			return await _get();
+		},
+
+		async forEach(callback) {
+			const val = await _get();
+			for (const [k, v] of val) {
+				await callback(v, k, val);
 			}
-			return false;
-		}
-		return this.#cache.has(key);
-	}
+		},
 
-	set(key: K, value: V): this {
-		this.#cache.set(key, value);
-		this.#save();
-		return this;
-	}
+		async get(key) {
+			const val = await _get();
+			return val.find(([k]) => equal(k, key))?.[1];
+		},
 
-	get size(): number {
-		return this.#cache.size;
-	}
+		async has(key) {
+			const val = await _get();
+			return val.some(([k]) => equal(k, key));
+		},
 
-	entries(): IterableIterator<[K, V]> {
-		return this.#cache.entries();
-	}
+		async keys() {
+			return (await _get()).map(([k]) => k);
+		},
 
-	keys(): IterableIterator<K> {
-		return this.#cache.keys();
-	}
+		async set(key, value) {
+			const val = await _get();
+			const added = val.filter(([k]) => !equal(k, key));
+			added.push([key, value]);
+			await _set(added);
+		},
 
-	values(): IterableIterator<V> {
-		return this.#cache.values();
-	}
+		async values() {
+			return (await _get()).map(([_, v]) => v);
+		},
 
-	[Symbol.iterator](): IterableIterator<[K, V]> {
-		return this.#cache.entries();
-	}
-
-	[Symbol.toStringTag] = "MapStorage";
-
-	watch(callback: WatchCallback<Map<K, V>>): Unwatcher {
-		return this.#storage.watch((newValue, oldValue) => {
-			callback(new Map(newValue), oldValue ? new Map(oldValue) : undefined);
-		});
-	}
-
-	unwatch(id?: string | undefined): void {
-		this.#storage.unwatch(id);
-	}
+		watch(callback) {
+			if (_driver.watch === undefined) {
+				return () => undefined;
+			}
+			return _driver.watch(async () => {
+				callback(await _get());
+			});
+		},
+	};
 }

@@ -2,12 +2,12 @@ pre-commit:
   parallel: true
   commands:
     prettier:
-      glob: "*.{md,yml,yaml,html,css}"
+      glob: "*.{md,yml,yaml,html,css,json,jsonc}"
       exclude: (package-lock\.json)
       run: |
-        npx prettier -w {staged_files} && git update-index --again
-    check:
-      glob: "*.{ts,tsx,cts,mts,json,jsonc}"
+        npx prettier --use-tabs -w {staged_files} && git update-index --again
+    style:
+      glob: "*.{ts,tsx,cts,mts}"
       run: >
         npx biome check --apply --no-errors-on-unmatched
         --files-ignore-unknown=true {staged_files}

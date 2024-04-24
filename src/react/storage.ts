@@ -1,39 +1,33 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Storage } from "../storage";
-import { IStorage, Watchable } from "../types";
+import type { StorageValue } from "../types";
 
 export type StorageHook<T> = readonly [
-	T,
-	Omit<IStorage<T>, keyof Watchable<T>>,
+	value: T | undefined,
+	setValue: (value: T) => Promise<void>,
 ];
 
-export const useStorage = <T>(instance: Storage<T>): StorageHook<T> => {
-	const isMounted = useRef(false);
-	const [renderValue, setRenderValue] = useState<T>(instance.defaultValue);
+export const useStorage = <T extends StorageValue>(
+	storage: Storage<T>,
+	init?: T,
+): StorageHook<T> => {
+	const [renderValue, setRenderValue] = useState(init);
 
-	const set = useCallback(async (value: T) => instance.set(value), [instance]);
-	const setSync = useCallback((value: T) => instance.set(value), [instance]);
-	const get = useCallback(async () => instance.get(), [instance]);
-	const getSync = useCallback(() => instance.getSync(), [instance]);
-	const reset = useCallback(async () => instance.reset(), [instance]);
+	const set = useCallback(async (value: T) => storage.set(value), [storage]);
 
 	useEffect(() => {
-		isMounted.current = true;
-		instance
-			.get()
-			.then((v) => setRenderValue(v))
-			.catch();
-		const unwatcher = instance.watch((newValue) => {
-			if (isMounted.current) {
-				setRenderValue(newValue);
-			}
+		(async () => {
+			setRenderValue(await storage.get());
+		})();
+
+		const unwatch = storage.watch((newValue) => {
+			setRenderValue(newValue);
 		});
 
 		return () => {
-			isMounted.current = false;
-			unwatcher();
+			unwatch();
 		};
-	}, [instance]);
+	}, [storage]);
 
-	return [renderValue, { set, setSync, get, getSync, reset }] as const;
+	return [renderValue, set] as const;
 };

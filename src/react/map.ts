@@ -1,74 +1,55 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-
+import { useCallback, useEffect, useState } from "react";
 import type { MapStorage } from "../map";
+import type { StorageValue } from "../types";
 
-export type MapStorageHook<T> = readonly [
-	value: Array<[string, T]>,
-	storage: {
-		// toObject(): Record<string, T>;
-		clear(): void;
-		delete(key: string): boolean;
-		get(key: string): T | undefined;
-		has(key: string): boolean;
-		set(key: string, value: T): void;
-		entries(): IterableIterator<[string, T]>;
-		keys(): IterableIterator<string>;
-		values(): IterableIterator<T>;
-		reset(): void;
+export type MapStorageHook<K, V> = readonly [
+	value: Array<[K, V]>,
+	map: {
+		clear(): Promise<void>;
+		delete(key: K): Promise<boolean>;
+		get(key: K): Promise<V | undefined>;
+		has(key: K): Promise<boolean>;
+		set(key: K, value: V): Promise<void>;
 	},
 ];
 
-export function useMapStorage<K extends string, V>(
-	instance: MapStorage<K, V>,
-): MapStorageHook<V> {
-	const isMounted = useRef(false);
+export function useMapStorage<K extends StorageValue, V extends StorageValue>(
+	storage: MapStorage<K, V>,
+): MapStorageHook<K, V> {
+	const [renderValue, setRenderValue] = useState<Array<[K, V]>>([]);
 
-	const [renderValue, setRenderValue] = useState<Array<[K, V]>>(
-		instance.defaultValue,
-	);
-
-	// const toObject = useCallback(() => instance.toObject(), [instance]);
-	const clear = useCallback(() => instance.clear(), [instance]);
-	const _delete = useCallback((key: K) => instance.delete(key), [instance]);
-	const get = useCallback((key: K) => instance.get(key), [instance]);
-	const has = useCallback((key: K) => instance.has(key), [instance]);
+	const clear = useCallback(() => storage.clear(), [storage]);
+	const _delete = useCallback((key: K) => storage.delete(key), [storage]);
+	const get = useCallback((key: K) => storage.get(key), [storage]);
+	const has = useCallback((key: K) => storage.has(key), [storage]);
 	const set = useCallback(
-		(key: K, value: V) => instance.set(key, value),
-		[instance],
+		(key: K, value: V) => storage.set(key, value),
+		[storage],
 	);
-	const entries = useCallback(() => instance.entries(), [instance]);
-	const keys = useCallback(() => instance.keys(), [instance]);
-	const values = useCallback(() => instance.values(), [instance]);
-	const reset = useCallback(() => instance.reset(), [instance]);
 
 	useEffect(() => {
-		isMounted.current = true;
-		setRenderValue([...instance.entries()]);
+		(async () => {
+			setRenderValue(await storage.entries());
+		})();
 
-		const unwatch = instance.watch((newValue) => {
-			if (isMounted.current) {
-				setRenderValue([...newValue]);
-			}
+		const unwatch = storage.watch((newValue) => {
+			if (newValue === undefined) return;
+			setRenderValue(newValue);
 		});
+
 		return () => {
-			isMounted.current = false;
 			unwatch();
 		};
-	}, [instance]);
+	}, [storage]);
 
 	return [
 		renderValue,
 		{
-			// toObject,
 			clear,
 			delete: _delete,
 			get,
 			has,
 			set,
-			entries,
-			keys,
-			values,
-			reset,
 		},
 	] as const;
 }
