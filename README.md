@@ -3,50 +3,42 @@
 A library of Web-Extension Storage with inter context sync, collections, hooks, etc.  
 Inspired by [@plasmohq/storage](https://github.com/PlasmoHQ/storage).
 
-## Features
-
-- Context syncing (Contents, Popup, Background)
-- Collections (Map, Set)
-- Key-Value
-- React Hooks
-
 ## APIs
 
 ```ts
-const storage = new Storage<T>(key: string, defaultValue: T, options?: StorageOptions);
+function createStorage<T>(key: string, opts?: CreateStorageOptions): Storage<T>;
 
-const map = new MapStorage<K,V>(key: string, defaultValue: [K,V][], options?: MapStorageOptions);
-
-
-type WatchCallback<T> = (newValue: T, oldValue?: T) => void;
-type Watchable<T> = {
-	watch: (callback: WatchCallback<T>) => Unwatcher;
-	unwatch: (id?: string) => void;
-};
-
-interface Storage<T> extends Watchable<T> {
-	get: () => Promise<T>;
-	getSync: () => T;
+interface Storage<T extends StorageValue> {
+	get: () => Promise<T | undefined>;
 	set: (value: T) => Promise<void>;
-	setSync: (value: T) => void;
+	watch: (callback: WatchCallback<T>) => Unwatch;
+}
+
+interface MapStorage<K extends StorageValue, V extends StorageValue> {
+	clear: () => Promise<void>;
+	delete: (key: K) => Promise<boolean>;
+	entries: () => Promise<[K, V][]>;
+	forEach: (callback: (value: V, key: K, map: [K, V][]) => unknown) => void;
+	get: (key: K) => Promise<V | undefined>;
+	has: (key: K) => Promise<boolean>;
+	keys: () => Promise<K[]>;
+	set: (key: K, value: V) => Promise<void>;
+	values: () => Promise<V[]>;
+	watch: (callback: WatchCallback<[K, V][]>) => Unwatch;
+}
+
+interface KVStorage<T extends KVEntries> {
+	readonly init: T;
+	get: () => Promise<T>;
+	getItem: <K extends keyof T>(key: K) => Promise<T[K]>;
 	reset: () => Promise<void>;
-}
-
-interface MapStorage<K, V> extends Map<K, V>, Watchable<Map<K, V>> {
-	reset: () => void;
-}
-
-interface SetStorage<T> extends Set<T>, Watchable<Set<T>> {
-	reset: () => void;
-}
-
-interface KVStorage<T extends Record<string, unknown>> extends Watchable<T> {
-	get: () => T;
-	getItem: <K extends keyof T>(key: K) => T[K];
-	set: (value: T) => void;
-	setItem: <K extends keyof T>(key: K, value: T[K]) => void;
-	reset: () => void;
-	watchItem: <K extends keyof T>(key: K, callback: WatchCallback<T[K]>) => Unwatcher;
+	set: (value: T) => Promise<void>;
+	setItem: <K extends keyof T>(key: K, value: T[K]) => Promise<void>;
+	watch: (callback: WatchCallback<T>) => Unwatch;
+	watchItem: <K extends keyof T>(
+		key: K,
+		callback: WatchCallback<T[K]>,
+	) => Unwatch;
 }
 ```
 
@@ -61,22 +53,22 @@ const entries = {
 	days: 100,
 };
 
-const kvStorage = new KVStorage("kv", entries);
+const kv = createKVStorage("kv", { area: "sync", init: entries });
 
 // Listen changes by key
-kvStorage.watchItem("appEnable", (newValue: boolean) => {});
+kv.watchItem("appEnable", (newValue: boolean) => {});
 ```
 
 ### Hooks
 
 ```jsx
-const instance = new SetStorage("items", [], { deepEqual: true });
+const instance = createStorage("items");
 
 function ItemList() {
-	const [items, itemSet] = useSetStorage(instance);
+	const [items, set] = useSetStorage(instance);
 
-	const cb = (item) => {
-		itemSet.delete(item);
+	const cb = async (item) => {
+		await set.delete(item);
 	};
 
 	return (
