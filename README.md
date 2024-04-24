@@ -1,7 +1,6 @@
 # webext-storage
 
-A library of Web-Extension Storage with inter context sync, collections, hooks, etc.  
-Inspired by [@plasmohq/storage](https://github.com/PlasmoHQ/storage).
+A library of Web-Extension Storage with inter context sync, collections, hooks, etc.
 
 ## APIs
 
