@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/ookkoouu/webext-storage/compare/v2.1.0...v3.0.0) (2024-04-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* change api to unstorage-like
+
+### Code Refactoring
+
+* change api to unstorage-like ([16aa1a9](https://github.com/ookkoouu/webext-storage/commit/16aa1a9a57c5bb668d95e8bf54f1802358b9da88))
+
 ## [2.1.0](https://github.com/ookkoouu/webext-storage/compare/v2.0.4...v2.1.0) (2024-04-13)
 
 
